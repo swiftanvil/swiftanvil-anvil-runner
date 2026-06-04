@@ -43,7 +43,7 @@ struct AnvilRunnerCLI {
     private static func setupCommand(arguments: [String]) async throws {
         let repo = extractOption(arguments, key: "--repo")
             ?? extractOption(arguments, key: "-r")
-            ?? prompt("GitHub repository URL (e.g., https://github.com/v-i-s-h-a-l/iStudio): ")
+            ?? prompt("GitHub repository URL (e.g., https://github.com/your-org/your-repo): ")
 
         let token = extractOption(arguments, key: "--token")
             ?? extractOption(arguments, key: "-t")
@@ -235,7 +235,7 @@ struct AnvilRunnerCLI {
           --aggressive           Aggressive cleanup (all caches, derived data)
 
         EXAMPLES:
-          anvil-runner setup --repo https://github.com/v-i-s-h-a-l/iStudio --token ghp_xxx --count 2
+          anvil-runner setup --repo https://github.com/your-org/your-repo --token ghp_xxx --count 2
           anvil-runner start --count 2
           anvil-runner status --count 2
           anvil-runner clean --aggressive

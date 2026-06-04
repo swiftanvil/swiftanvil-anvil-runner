@@ -24,5 +24,6 @@ let package = Package(
             name: "AnvilRunnerTests",
             dependencies: ["AnvilRunner"]
         )
-    ]
+    ],
+    swiftLanguageModes: [.v6]
 )

@@ -59,7 +59,7 @@ public actor RunnerLifecycle {
     public func stop(installDirectory: String, count: Int, namePrefix: String) async throws {
         for i in 1...count {
             let runnerName = "\(namePrefix)-\(i)"
-            _ = try? await executeShell(command: "pkill -f 'actions.runner.*\(runnerName)'")
+            try await terminateProcess(matching: "actions.runner.*\(runnerName)")
         }
     }
 
@@ -124,6 +124,13 @@ public actor RunnerLifecycle {
         if let directory = directory {
             process.currentDirectoryURL = URL(fileURLWithPath: directory)
         }
+        try await runProcess(process)
+    }
+
+    private func terminateProcess(matching pattern: String) async throws {
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/usr/bin/pkill")
+        process.arguments = ["-f", pattern]
         try await runProcess(process)
     }
 

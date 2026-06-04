@@ -16,18 +16,41 @@ AnvilRunner is a Swift-based tool for managing self-hosted GitHub Actions runner
 
 ## Installation
 
+### As a Swift Package Dependency
+
+Add to your `Package.swift`:
+
+```swift
+// swift-tools-version: 6.0
+import PackageDescription
+
+let package = Package(
+    name: "YourProject",
+    dependencies: [
+        .package(url: "https://github.com/swiftanvil/swiftanvil-anvil-runner.git", from: "1.0.0")
+    ],
+    targets: [
+        .target(name: "YourTarget", dependencies: [.product(name: "AnvilRunner", package: "swiftanvil-anvil-runner")])
+    ]
+)
+```
+
+### CLI Tool (Standalone)
+
 ```bash
 git clone https://github.com/swiftanvil/swiftanvil-anvil-runner.git
 cd swiftanvil-anvil-runner
 swift build -c release
 ```
 
+The `anvil-runner` binary will be at `.build/release/anvil-runner`.
+
 ## Usage
 
 ### Setup
 
 ```bash
-anvil-runner setup --repo https://github.com/v-i-s-h-a-l/iStudio --token ghp_xxx --count 2
+anvil-runner setup --repo https://github.com/your-org/your-repo --token ghp_xxx --count 2
 ```
 
 ### Start runners
@@ -46,6 +69,19 @@ anvil-runner status --count 2
 
 ```bash
 anvil-runner clean --aggressive
+```
+
+## Architecture
+
+```
+AnvilRunner
+├── RunnerConfiguration.swift    # Configuration model with validation
+├── RunnerLifecycle.swift        # Download, configure, start, stop, remove
+├── CleanupPolicy.swift          # Four cleanup strategies + disk checks
+└── HealthMonitor.swift          # Process status, disk, memory monitoring
+
+AnvilRunnerCLI
+└── main.swift                   # CLI entry point (setup, start, stop, status, clean)
 ```
 
 ## Requirements
