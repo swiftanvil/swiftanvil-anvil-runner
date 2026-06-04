@@ -26,6 +26,10 @@ struct AnvilRunnerCLI {
                 try await statusCommand(arguments: arguments)
             case "clean", "cleanup":
                 try await cleanCommand(arguments: arguments)
+            case "discover":
+                try await discoverCommand(arguments: arguments)
+            case "doctor":
+                try await doctorCommand(arguments: arguments)
             case "help", "--help", "-h":
                 printUsage()
             default:
@@ -241,6 +245,41 @@ struct AnvilRunnerCLI {
 
     // MARK: - Helpers
 
+    private static func discoverCommand(arguments: [String]) async throws {
+        let json = arguments.contains("--json")
+        let discovery = CapabilityDiscovery()
+        let report = await discovery.discover()
+
+        if json {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(report)
+            print(String(data: data, encoding: .utf8)!)
+        } else {
+            print(report.formattedDiscovery())
+        }
+    }
+
+    private static func doctorCommand(arguments: [String]) async throws {
+        let json = arguments.contains("--json")
+        let discovery = CapabilityDiscovery()
+        let report = await discovery.doctor()
+
+        if json {
+            let encoder = JSONEncoder()
+            encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+            let data = try encoder.encode(report)
+            print(String(data: data, encoding: .utf8)!)
+        } else {
+            print(report.formattedDoctor())
+        }
+
+        let hasFailures = report.checks.contains { $0.status == CheckStatus.fail }
+        if hasFailures {
+            exit(1)
+        }
+    }
+
     private static func printUsage() {
         print("""
         anvil-runner — Self-hosted GitHub Actions runner manager for macOS
@@ -255,6 +294,8 @@ struct AnvilRunnerCLI {
           remove      Remove runner instances and their directories
           status      Show runner health and system status
           clean       Clean workspace and build artifacts
+          discover    Discover host capabilities (read-only)
+          doctor      Check host health (read-only)
           help        Show this help message
 
         SETUP OPTIONS:
@@ -273,6 +314,9 @@ struct AnvilRunnerCLI {
         STATUS OPTIONS:
           --count, -c <n>        Number of runners to check (default: 1)
           --name, -n <prefix>    Runner name prefix (default: macmini)
+
+        DISCOVER/DOCTOR OPTIONS:
+          --json                 Output JSON instead of human-readable text
 
         CLEAN OPTIONS:
           --workspace <path>     Clean specific workspace path
