@@ -5,7 +5,7 @@ import PackageDescription
 let package = Package(
     name: "AnvilRunner",
     platforms: [
-        .macOS(.v14)
+        .macOS(.v15)
     ],
     products: [
         .library(name: "AnvilRunner", targets: ["AnvilRunner"]),
