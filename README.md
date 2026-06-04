@@ -14,6 +14,9 @@ small teams who want predictable local CI capacity without cloud-minute constrai
 - **Ephemeral mode** — Clean workspace after every job (default)
 - **Automated cleanup** — Four policies from minimal to full wipe
 - **Health monitoring** — Disk usage, memory, runner process status
+- **Capability discovery** — Read-only host scan (tools, agents, network, power)
+- **Doctor checks** — Pass/warn/fail health checks with CI-friendly exit codes
+- **Worker provisioning** — Dry-run-first profile-based host configuration
 - **Multi-instance** — Run 2–4 parallel runners on a single Mac Mini
 
 ## Installation
@@ -94,6 +97,32 @@ anvil-runner clean --workspace ~/actions-runner/_work --dry-run
 anvil-runner clean --aggressive
 ```
 
+### Discover host capabilities
+
+```bash
+anvil-runner discover
+anvil-runner discover --json
+```
+
+### Run doctor checks
+
+```bash
+anvil-runner doctor
+anvil-runner doctor --json
+```
+
+### Provision a worker profile
+
+```bash
+# Dry-run (default) — see what would change
+anvil-runner provision --profile build-worker
+
+# Apply the plan
+anvil-runner provision --profile test-worker --apply --yes
+```
+
+Built-in profiles: `build-worker`, `test-worker`, `review-worker`.
+
 ## Architecture
 
 ```
@@ -101,15 +130,20 @@ AnvilRunner
 ├── RunnerConfiguration.swift    # Configuration model with validation
 ├── RunnerLifecycle.swift        # Download, configure, start, stop, remove
 ├── CleanupPolicy.swift          # Cleanup strategies, safety scopes, dry-run results, and disk checks
-└── HealthMonitor.swift          # Process status, disk, memory monitoring
+├── HealthMonitor.swift          # Process status, disk, memory monitoring
+├── CapabilityDiscovery.swift    # Read-only host capability scan
+├── CapabilityModels.swift       # Discovery report models and formatting
+├── ProvisioningModels.swift     # Worker profiles, plans, and results
+├── ProvisioningPlanner.swift    # Plan generation from profile + host state
+└── ProvisioningExecutor.swift   # Safe plan application with audit logging
 
 AnvilRunnerCLI
-└── main.swift                   # CLI entry point (setup, start, stop, status, clean)
+└── main.swift                   # CLI entry point
 ```
 
 ## Requirements
 
-- macOS 14+
+- macOS 15+
 - Swift 6.0+
 - GitHub personal access token with `repo` scope
 - GitHub Actions runner 2.334.0 by default
@@ -127,6 +161,9 @@ AnvilRunner manages long-lived machines and can delete build artifacts, so clean
 - runner removal unregisters with GitHub before deleting local files unless `--force-local` is explicit
 - runner registration and removal tokens are passed to GitHub's runner scripts through
   `ACTIONS_RUNNER_INPUT_TOKEN`, not command-line arguments
+- provisioning is dry-run by default; `--apply` is required for changes
+- privileged provisioning changes require explicit `--yes` or interactive confirmation
+- provisioning audit log captures every action with timestamp and status
 
 Prefer `ANVIL_RUNNER_TOKEN` over `--token` so credentials do not land in shell history.
 

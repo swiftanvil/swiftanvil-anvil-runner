@@ -30,6 +30,8 @@ struct AnvilRunnerCLI {
                 try await discoverCommand(arguments: arguments)
             case "doctor":
                 try await doctorCommand(arguments: arguments)
+            case "provision":
+                try await provisionCommand(arguments: arguments)
             case "help", "--help", "-h":
                 printUsage()
             default:
@@ -280,6 +282,43 @@ struct AnvilRunnerCLI {
         }
     }
 
+    private static func provisionCommand(arguments: [String]) async throws {
+        let profileName = extractOption(arguments, key: "--profile")
+            ?? extractOption(arguments, key: "-p")
+            ?? "build-worker"
+        let dryRun = !arguments.contains("--apply")
+        let autoConfirm = arguments.contains("--yes")
+
+        let profile: WorkerProfile
+        if let builtIn = WorkerProfile.allBuiltIn.first(where: { $0.name == profileName }) {
+            profile = builtIn
+        } else {
+            print("Unknown profile: \(profileName)")
+            print("Built-in profiles: \(WorkerProfile.allBuiltIn.map(\.name).joined(separator: ", "))")
+            exit(1)
+        }
+
+        let planner = ProvisioningPlanner()
+        let plan = await planner.plan(for: profile)
+
+        let executor = ProvisioningExecutor()
+        let result = await executor.apply(plan: plan, dryRun: dryRun, autoConfirm: autoConfirm)
+
+        if !result.appliedChanges.isEmpty {
+            print("\n✅ Applied \(result.appliedChanges.count) change(s).")
+        }
+        if !result.skippedChanges.isEmpty && dryRun {
+            print("\n📝 Skipped \(result.skippedChanges.count) change(s) (dry run).")
+        }
+        if !result.errors.isEmpty {
+            print("\n❌ Errors:")
+            for error in result.errors {
+                print("  \(error.changeID): \(error.message)")
+            }
+            exit(1)
+        }
+    }
+
     private static func printUsage() {
         print("""
         anvil-runner — Self-hosted GitHub Actions runner manager for macOS
@@ -296,6 +335,7 @@ struct AnvilRunnerCLI {
           clean       Clean workspace and build artifacts
           discover    Discover host capabilities (read-only)
           doctor      Check host health (read-only)
+          provision   Plan or apply worker provisioning (dry-run by default)
           help        Show this help message
 
         SETUP OPTIONS:
@@ -318,6 +358,11 @@ struct AnvilRunnerCLI {
         DISCOVER/DOCTOR OPTIONS:
           --json                 Output JSON instead of human-readable text
 
+        PROVISION OPTIONS:
+          --profile, -p <name>   Worker profile to apply (default: build-worker)
+          --apply                Apply the plan (default is dry-run)
+          --yes                  Auto-confirm privileged changes
+
         CLEAN OPTIONS:
           --workspace <path>     Clean specific workspace path
           --allow-root <path>    Additional root under which cleanup is allowed
@@ -329,6 +374,8 @@ struct AnvilRunnerCLI {
           anvil-runner start --count 2
           anvil-runner status --count 2
           anvil-runner clean --aggressive
+          anvil-runner provision --profile test-worker
+          anvil-runner provision --profile build-worker --apply --yes
         """)
     }
 
