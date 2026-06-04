@@ -6,7 +6,7 @@ All notable changes to AnvilRunner are documented here.
 
 - No changes yet.
 
-## 0.1.0 - Pending
+## 0.1.0 - 2026-06-04
 
 Initial SwiftAnvil release candidate.
 
