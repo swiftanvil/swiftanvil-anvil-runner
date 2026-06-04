@@ -1,74 +1,28 @@
-# iStudio Agent Rules
+# Agent Instructions
 
-These rules apply to all agent work in this repository.
+This repository contains AnvilRunner, the SwiftAnvil package for managing self-hosted GitHub Actions runners
+on macOS.
 
-## Host-Agnostic Source Of Truth
+## Rules
 
-The load-bearing workflow is defined by repository files and shell scripts, not
-by any one LLM host.
+- Do not commit directly to `main`; use a feature branch and pull request.
+- Keep runner lifecycle operations shell-free where possible.
+- Do not interpolate user-controlled paths or names into shell commands.
+- Cleanup code is safety-critical.
+- New cleanup behavior must have tests for allowed paths, protected paths, and dry-run behavior.
+- Prefer environment variables for credentials.
+- Do not document command examples that encourage token leakage into shell history.
+- Keep CI and enforcement workflows aligned with the current SwiftAnvil organization templates.
+- Use `swift build`, `swift test`, and local SwiftAnvil enforcement before opening a PR.
+- Public API changes should follow Swift API Design Guidelines and include documentation comments.
 
-For any goal, task, or chain workflow, use the repo-local skill:
+## Review Focus
 
-```text
-skills/istudio-goal-workflow/SKILL.md
-```
+Every substantive change should be reviewed for:
 
-That skill is the operator-facing entrypoint and owns role/model strategy. It
-uses these host-agnostic repository artifacts as its mechanical backing:
-
-```text
-scripts/goal-start.sh
-docs/02-contracts/goal-workflow.md
-docs/02-contracts/task-chain-communication-contract.md
-```
-
-Host-specific adapters may be added later, but they must remain optional
-wrappers over this repo-local skill. They must not become the source of truth.
-
-## Branch And Worktree Policy
-
-- Never commit directly on `main`.
-- Never push `main` from a local checkout.
-- PRs into `main` must use rebase (linear history). Squash is permitted only
-  for small PRs. Merge commits on `main` are forbidden.
-- Every task or goal must run from a dedicated worktree and feature branch,
-  created or selected through `scripts/goal-start.sh` unless a recorded plan
-  explains why a manual path was required.
-- Feature branches are the source branches for pull requests into `main`.
-- Implementation tasks inside a chain should use task worktrees branched from
-  the chain feature branch when parallel or isolated execution is useful.
-- Completed task work should merge back into the chain feature branch through a
-  controlled squash or rebase flow.
-- A chain feature branch is pushed only after planned tasks, reviews, and
-  checks are complete enough for PR review.
-
-## Goal Workflow
-
-Goal work must follow:
-
-1. Run `scripts/goal-start.sh <goal-slug>` to create or select a dedicated
-   feature worktree and plan artifact.
-2. Produce a plan artifact before implementation.
-3. Review the plan through self-review and exhaustive sibling or cross-host
-   critique.
-4. Address review feedback before implementation.
-5. Implement in isolated task worktrees when useful.
-6. Review implementation exhaustively against the finalized plan, goals,
-   non-goals, policy, tests, recovery behavior, and field execution risks.
-7. Refactor where needed for testability, SOLID principles, and clean
-   architecture.
-8. Add or update unit and integration tests for meaningful use cases.
-9. Emit task and chain briefs for operator visibility.
-10. Push the feature branch and create a pull request against `main`.
-
-### Fast Path For "What Is Next"
-
-When the operator asks `goal next`, `what is next`, or similar, use the
-repo-local goal discovery mechanism defined in
-`skills/istudio-goal-workflow/SKILL.md` rather than manually exploring plans,
-briefs, branches, and roadmap files. Only fall back to manual artifact
-exploration if the repo-local mechanism is unavailable, fails, or produces
-ambiguous output.
-
-These rules are non-negotiable unless the operator explicitly records an
-override in the relevant plan artifact.
+- filesystem deletion blast radius
+- process matching and signal safety
+- credential handling
+- idempotence of setup/start/stop/remove operations
+- test coverage for failure paths
+- compatibility with self-hosted macOS runners

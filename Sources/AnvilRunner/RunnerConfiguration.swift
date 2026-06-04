@@ -2,7 +2,7 @@ import Foundation
 
 /// Configuration for a self-hosted GitHub Actions runner instance.
 public struct RunnerConfiguration: Sendable {
-    /// The GitHub repository URL (e.g., "https://github.com/v-i-s-h-a-l/iStudio").
+    /// The GitHub repository URL (e.g., "https://github.com/your-org/your-repo").
     public let repositoryURL: String
     /// The GitHub personal access token for runner registration.
     public let token: String
