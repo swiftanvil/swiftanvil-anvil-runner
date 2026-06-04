@@ -31,7 +31,7 @@ let package = Package(
     dependencies: [
         .package(
             url: "https://github.com/swiftanvil/swiftanvil-anvil-runner.git",
-            from: "1.0.0"
+            from: "0.1.0"
         )
     ],
     targets: [
@@ -134,6 +134,24 @@ Prefer `ANVIL_RUNNER_TOKEN` over `--token` so credentials do not land in shell h
 
 `start` launches runner processes directly and does not yet install macOS LaunchAgents or another supervisor.
 Use a persistent session or external supervisor for long-lived runner fleets until LaunchAgent support lands.
+
+## Managed Worker Direction
+
+AnvilRunner is the runner lifecycle layer of the broader SwiftAnvil managed-worker direction. The intended user
+experience is one coherent worker workflow for capability discovery, host readiness, safe provisioning, and
+runner management without exposing internal repository boundaries.
+
+The managed-worker vision is documented in `Documentation/MANAGED_WORKER_VISION.md`.
+
+## Local Enforcement
+
+Run local SwiftAnvil checks before opening a PR:
+
+```bash
+Scripts/enforce-local.sh
+```
+
+This expects `swiftanvil-enforcement` and `swiftanvil-meta` to be cloned next to this repository.
 
 ## License
 

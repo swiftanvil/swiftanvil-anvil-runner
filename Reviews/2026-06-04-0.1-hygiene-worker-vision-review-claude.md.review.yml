@@ -1,0 +1,11 @@
+schema_version: 1
+status: success
+agent: claude
+builder: codex
+request: 'Reviews/2026-06-04-0.1-hygiene-worker-vision-review-request.md'
+output: 'Reviews/2026-06-04-0.1-hygiene-worker-vision-review-claude.md'
+verdict: APPROVED_WITH_NOTES
+started_at: '2026-06-04T02:02:41Z'
+finished_at: '2026-06-04T02:06:01Z'
+exit_code: 0
+home_strategy: login_home

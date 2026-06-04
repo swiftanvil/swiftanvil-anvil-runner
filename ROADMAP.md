@@ -26,6 +26,7 @@ and small teams that need more control than hosted minutes provide.
 | CI | Swift build/test plus SwiftAnvil policy workflow |
 | Documentation | Setup, cleanup, safety model, and operational recovery notes |
 | Review | PR provenance and sibling-host review |
+| Release hygiene | Changelog, security policy, code ownership, dependency updates, and release tag |
 
 ## Milestones
 
@@ -34,10 +35,14 @@ and small teams that need more control than hosted minutes provide.
 - Swift package builds and tests on macOS.
 - Cleanup safety model is implemented.
 - CI and organization standards are present.
-- README documents safe setup and cleanup.
+- Package documentation covers safe setup, cleanup, local enforcement, and managed-worker direction.
+- Changelog, security policy, ownership, and dependency update policy are present.
+- `0.1.0` release tag is cut after release hygiene lands.
 
 ### 0.2: Configuration File Support
 
+- Add managed-worker capability discovery as the first read-only worker feature.
+- Add `worker doctor` planning and CLI shape without mutating host settings.
 - Add a versioned YAML or JSON config file for fleets.
 - Support labels, runner count, install directory, cleanup policy, and disk thresholds.
 - Validate config before any mutation.
