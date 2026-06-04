@@ -1,0 +1,11 @@
+schema_version: 1
+status: success
+agent: claude
+builder: codex
+request: 'Reviews/2026-06-04-anvil-runner-release-review-request.md'
+output: 'Reviews/2026-06-04-anvil-runner-release-review-claude.md'
+verdict: NEEDS_REVISION
+started_at: '2026-06-04T00:53:17Z'
+finished_at: '2026-06-04T00:59:16Z'
+exit_code: 0
+home_strategy: login_home

@@ -47,6 +47,8 @@ struct AnvilRunnerCLI {
 
         let token = extractOption(arguments, key: "--token")
             ?? extractOption(arguments, key: "-t")
+            ?? ProcessInfo.processInfo.environment["ANVIL_RUNNER_TOKEN"]
+            ?? ProcessInfo.processInfo.environment["GITHUB_TOKEN"]
             ?? prompt("GitHub personal access token: ")
 
         let count = Int(extractOption(arguments, key: "--count")
@@ -138,13 +140,28 @@ struct AnvilRunnerCLI {
         let namePrefix = extractOption(arguments, key: "--name")
             ?? extractOption(arguments, key: "-n")
             ?? "macmini"
+        let expandedInstallDir = (installDir as NSString).expandingTildeInPath
+        let forceLocal = arguments.contains("--force-local")
+        let token = extractOption(arguments, key: "--token")
+            ?? extractOption(arguments, key: "-t")
+            ?? ProcessInfo.processInfo.environment["ANVIL_RUNNER_REMOVAL_TOKEN"]
+            ?? ProcessInfo.processInfo.environment["ANVIL_RUNNER_TOKEN"]
+            ?? ProcessInfo.processInfo.environment["GITHUB_TOKEN"]
 
         print("Removing \(count) runner(s)...")
-        let lifecycle = RunnerLifecycle()
+        let defaultPolicy = CleanupSafetyPolicy.runnerDefault()
+        let lifecycle = RunnerLifecycle(
+            safetyPolicy: CleanupSafetyPolicy(
+                allowedRootDirectories: defaultPolicy.allowedRootDirectories + [expandedInstallDir],
+                protectedDirectories: defaultPolicy.protectedDirectories
+            )
+        )
         try await lifecycle.remove(
-            installDirectory: (installDir as NSString).expandingTildeInPath,
+            installDirectory: expandedInstallDir,
             count: count,
-            namePrefix: namePrefix
+            namePrefix: namePrefix,
+            token: token,
+            forceLocal: forceLocal
         )
         print("✅ Runners removed.")
     }
@@ -180,23 +197,46 @@ struct AnvilRunnerCLI {
 
     private static func cleanCommand(arguments: [String]) async throws {
         let aggressive = arguments.contains("--aggressive")
+        let dryRun = arguments.contains("--dry-run")
         let workspace = extractOption(arguments, key: "--workspace")
+        let allowedRoot = extractOption(arguments, key: "--allow-root")
 
-        let executor = CleanupExecutor()
+        let defaultPolicy = CleanupSafetyPolicy.runnerDefault(dryRun: dryRun)
+        var allowedRootDirectories = defaultPolicy.allowedRootDirectories
+        if let allowedRoot {
+            let expandedRoot = (allowedRoot as NSString).expandingTildeInPath
+            guard defaultPolicy.allowsAdditionalRoot(expandedRoot) else {
+                throw CleanupError.unsafePath(expandedRoot)
+            }
+            allowedRootDirectories.append(expandedRoot)
+        }
+        let executor = CleanupExecutor(
+            safetyPolicy: CleanupSafetyPolicy(
+                allowedRootDirectories: allowedRootDirectories,
+                protectedDirectories: defaultPolicy.protectedDirectories,
+                dryRun: dryRun
+            )
+        )
 
         if let workspace = workspace {
             print("Cleaning workspace: \(workspace)...")
-            try await executor.execute(
+            let result = try await executor.execute(
                 policy: aggressive ? .aggressive : .standard,
                 workspacePath: workspace
             )
+            printCleanupResult(result)
         } else {
             print("Running scheduled deep clean...")
-            try await executor.scheduledDeepClean(daysOld: aggressive ? 1 : 7)
+            let result = try await executor.scheduledDeepClean(daysOld: aggressive ? 1 : 7)
+            printCleanupResult(result)
         }
 
-        let diskUsage = try await executor.diskUsagePercent()
-        print("✅ Cleanup complete. Disk usage: \(diskUsage)%")
+        if dryRun {
+            print("✅ Cleanup dry run complete.")
+        } else {
+            let diskUsage = try await executor.diskUsagePercent()
+            print("✅ Cleanup complete. Disk usage: \(diskUsage)%")
+        }
     }
 
     // MARK: - Helpers
@@ -219,12 +259,16 @@ struct AnvilRunnerCLI {
 
         SETUP OPTIONS:
           --repo, -r <url>       GitHub repository URL
-          --token, -t <token>    GitHub personal access token
+          --token, -t <token>    GitHub personal access token (prefer ANVIL_RUNNER_TOKEN env var)
           --count, -c <n>        Number of runner instances (default: 1)
           --name, -n <prefix>    Runner name prefix (default: macmini)
           --dir, -d <path>       Install directory (default: ~/actions-runner)
           --no-ephemeral         Disable ephemeral mode (persist between jobs)
           --aggressive           Use aggressive cleanup policy
+
+        REMOVE OPTIONS:
+          --token, -t <token>    GitHub runner removal token (prefer ANVIL_RUNNER_REMOVAL_TOKEN)
+          --force-local          Delete local files without unregistering from GitHub
 
         STATUS OPTIONS:
           --count, -c <n>        Number of runners to check (default: 1)
@@ -232,10 +276,12 @@ struct AnvilRunnerCLI {
 
         CLEAN OPTIONS:
           --workspace <path>     Clean specific workspace path
+          --allow-root <path>    Additional root under which cleanup is allowed
+          --dry-run              Print cleanup actions without deleting files
           --aggressive           Aggressive cleanup (all caches, derived data)
 
         EXAMPLES:
-          anvil-runner setup --repo https://github.com/your-org/your-repo --token ghp_xxx --count 2
+          ANVIL_RUNNER_TOKEN=<token> anvil-runner setup --repo https://github.com/your-org/your-repo --count 2
           anvil-runner start --count 2
           anvil-runner status --count 2
           anvil-runner clean --aggressive
@@ -252,5 +298,14 @@ struct AnvilRunnerCLI {
     private static func prompt(_ message: String) -> String {
         print(message, terminator: " ")
         return readLine() ?? ""
+    }
+
+    private static func printCleanupResult(_ result: CleanupResult) {
+        for path in result.dryRunPaths {
+            print("Dry run: would remove \(path)")
+        }
+        for path in result.removedPaths {
+            print("Removed \(path)")
+        }
     }
 }

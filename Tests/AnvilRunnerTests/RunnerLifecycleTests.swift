@@ -9,6 +9,7 @@ struct RunnerLifecycleTests {
         let _ = RunnerError.processFailed(exitCode: 1)
         let _ = RunnerError.downloadFailed(URL: "https://example.com")
         let _ = RunnerError.configurationFailed(reason: "missing token")
+        let _ = RunnerError.invalidRunnerName("../runner")
 
         // All error cases constructible — test passes if we reach here
     }
@@ -25,7 +26,8 @@ struct RunnerLifecycleTests {
 
     @Test
     func runnerErrorDownloadURL() {
-        let url = "https://github.com/actions/runner/releases/download/v2.332.1/actions-runner-osx-arm64-2.332.1.tar.gz"
+        let url = "https://github.com/actions/runner/releases/download/v2.334.0/" +
+            "actions-runner-osx-arm64-2.334.0.tar.gz"
         let error = RunnerError.downloadFailed(URL: url)
         if case .downloadFailed(let failedURL) = error {
             #expect(failedURL == url)
@@ -53,10 +55,78 @@ struct RunnerLifecycleTests {
     }
 
     @Test
+    func runnerProcessIDsRequireLiteralNameAndDirectoryMatch() {
+        let processList = """
+        101 /Users/me/actions-runner/macmini-1/bin/Runner.Listener run
+        102 /Users/me/actions-runner/macmini-2/bin/Runner.Listener run
+        103 /tmp/macmini-1/bin/Runner.Listener run
+        104 /Users/me/actions-runner/macmini-1-extra/bin/Runner.Listener run
+        """
+
+        let pids = RunnerLifecycle.runnerProcessIDs(
+            from: processList,
+            runnerName: "macmini-1",
+            runnerDirectory: "/Users/me/actions-runner/macmini-1"
+        )
+
+        #expect(pids == [101])
+    }
+
+    @Test
+    func runnerProcessIDsDoNotTreatRunnerNameAsRegex() {
+        let processList = """
+        201 /Users/me/actions-runner/runner-1/bin/Runner.Listener run
+        202 /Users/me/actions-runner/runner.*1/bin/Runner.Listener run
+        """
+
+        let pids = RunnerLifecycle.runnerProcessIDs(
+            from: processList,
+            runnerName: "runner.*1",
+            runnerDirectory: "/Users/me/actions-runner/runner.*1"
+        )
+
+        #expect(pids == [202])
+    }
+
+    @Test
+    func runnerDirectoryRejectsTraversalNames() throws {
+        #expect(throws: RunnerError.self) {
+            _ = try RunnerLifecycle.runnerDirectory(
+                named: "../outside-1",
+                under: "/Users/me/actions-runner"
+            )
+        }
+
+        #expect(throws: RunnerError.self) {
+            _ = try RunnerLifecycle.runnerDirectory(
+                named: "macmini/../outside-1",
+                under: "/Users/me/actions-runner"
+            )
+        }
+    }
+
+    @Test
+    func runnerDirectoryAllowsSafeNames() throws {
+        let directory = try RunnerLifecycle.runnerDirectory(
+            named: "macmini.arm64-1",
+            under: "/Users/me/actions-runner"
+        )
+
+        #expect(directory == "/Users/me/actions-runner/macmini.arm64-1")
+    }
+
+    @Test
+    func runnerTokenIsPassedThroughEnvironmentInput() {
+        let environment = RunnerLifecycle.environment(addingRunnerToken: "test-token")
+
+        #expect(environment["ACTIONS_RUNNER_INPUT_TOKEN"] == "test-token")
+    }
+
+    @Test
     func runnerConfigurationValidation() {
         let config = RunnerConfiguration(
             repositoryURL: "https://github.com/example-org/example-repo",
-            token: "ghp_test",
+            token: "test-token",
             runnerCount: 2,
             namePrefix: "test-runner",
             installDirectory: "/tmp/test-runners",

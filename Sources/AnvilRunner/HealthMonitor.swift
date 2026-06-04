@@ -2,13 +2,11 @@ import Foundation
 
 /// Monitors the health of self-hosted runner instances.
 public actor HealthMonitor {
-    private var statuses: [String: RunnerStatus] = [:]
-
     public init() {}
 
     /// Checks the health of a runner and returns its status.
     public func checkRunner(name: String, installDirectory: String) async -> RunnerStatus {
-        let isRunning = await isProcessRunning(name: name)
+        let isRunning = await isProcessRunning(name: name, installDirectory: installDirectory)
         let diskUsage = (try? await CleanupExecutor().diskUsagePercent()) ?? 0
         let memoryUsage = (try? await memoryUsagePercent()) ?? 0
 
@@ -20,14 +18,13 @@ public actor HealthMonitor {
             memoryUsagePercent: memoryUsage
         )
 
-        statuses[name] = status
         return status
     }
 
     /// Checks all runners in a fleet.
     public func checkFleet(installDirectory: String, count: Int, namePrefix: String) async -> [RunnerStatus] {
         var results: [RunnerStatus] = []
-        for i in 1...count {
+        for i in 1...max(1, count) {
             let name = "\(namePrefix)-\(i)"
             let status = await checkRunner(name: name, installDirectory: installDirectory)
             results.append(status)
@@ -55,8 +52,12 @@ public actor HealthMonitor {
 
         for status in statuses {
             let state = status.isRunning ? "🟢 Running" : "🔴 Stopped"
-            let disk = status.diskUsagePercent >= 80 ? "⚠️ \(status.diskUsagePercent)%" : "\(status.diskUsagePercent)%"
-            let memory = status.memoryUsagePercent >= 90 ? "⚠️ \(status.memoryUsagePercent)%" : "\(status.memoryUsagePercent)%"
+            let disk = status.diskUsagePercent >= 80
+                ? "⚠️ \(status.diskUsagePercent)%"
+                : "\(status.diskUsagePercent)%"
+            let memory = status.memoryUsagePercent >= 90
+                ? "⚠️ \(status.memoryUsagePercent)%"
+                : "\(status.memoryUsagePercent)%"
 
             lines.append("""
             \(status.name):
@@ -71,19 +72,30 @@ public actor HealthMonitor {
 
     // MARK: - Private
 
-    private func isProcessRunning(name: String) async -> Bool {
+    private func isProcessRunning(name: String, installDirectory: String) async -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
-        process.arguments = ["-f", "actions.runner.*\(name)"]
+        process.arguments = ["-fl", "Runner.Listener"]
 
         let pipe = Pipe()
         process.standardOutput = pipe
-        process.standardError = pipe
+        process.standardError = Pipe()
 
         do {
             try process.run()
             process.waitUntilExit()
-            return process.terminationStatus == 0
+            guard process.terminationStatus == 0 else {
+                return false
+            }
+
+            let data = pipe.fileHandleForReading.readDataToEndOfFile()
+            let output = String(data: data, encoding: .utf8) ?? ""
+            let runnerDirectory = try RunnerLifecycle.runnerDirectory(named: name, under: installDirectory)
+            return !RunnerLifecycle.runnerProcessIDs(
+                from: output,
+                runnerName: name,
+                runnerDirectory: runnerDirectory
+            ).isEmpty
         } catch {
             return false
         }

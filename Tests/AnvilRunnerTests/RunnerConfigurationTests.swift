@@ -8,11 +8,11 @@ struct RunnerConfigurationTests {
     func defaultConfiguration() {
         let config = RunnerConfiguration(
             repositoryURL: "https://github.com/example-org/example-repo",
-            token: "ghp_test"
+            token: "test-token"
         )
 
         #expect(config.repositoryURL == "https://github.com/example-org/example-repo")
-        #expect(config.token == "ghp_test")
+        #expect(config.token == "test-token")
         #expect(config.runnerCount == 1)
         #expect(config.namePrefix == "macmini")
         #expect(config.ephemeral == true)
@@ -26,7 +26,7 @@ struct RunnerConfigurationTests {
     func customConfiguration() {
         let config = RunnerConfiguration(
             repositoryURL: "https://github.com/example-org/example-repo",
-            token: "ghp_abc",
+            token: "test-token",
             runnerCount: 3,
             namePrefix: "ci-runner",
             installDirectory: "~/custom-runners",
@@ -50,7 +50,7 @@ struct RunnerConfigurationTests {
     func installDirectoryExpandsTilde() {
         let config = RunnerConfiguration(
             repositoryURL: "https://github.com/example-org/example-repo",
-            token: "ghp_test",
+            token: "test-token",
             installDirectory: "~/actions-runner"
         )
 
@@ -62,7 +62,7 @@ struct RunnerConfigurationTests {
     func runnerCountMinimumIsOne() {
         let config = RunnerConfiguration(
             repositoryURL: "https://github.com/example-org/example-repo",
-            token: "ghp_test",
+            token: "test-token",
             runnerCount: 0
         )
 
@@ -73,14 +73,14 @@ struct RunnerConfigurationTests {
     func diskAlertThresholdClamped() {
         let over = RunnerConfiguration(
             repositoryURL: "https://github.com/example-org/example-repo",
-            token: "ghp_test",
+            token: "test-token",
             diskAlertThreshold: 150
         )
         #expect(over.diskAlertThreshold == 100)
 
         let under = RunnerConfiguration(
             repositoryURL: "https://github.com/example-org/example-repo",
-            token: "ghp_test",
+            token: "test-token",
             diskAlertThreshold: -10
         )
         #expect(under.diskAlertThreshold == 0)
