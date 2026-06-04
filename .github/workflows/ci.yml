@@ -8,9 +8,19 @@ on:
 
 jobs:
   build-and-test:
-    runs-on: macos-15
+    name: build-and-test (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-14, macos-15]
     steps:
       - uses: actions/checkout@v6
+      - name: Select Swift 6 toolchain
+        run: |
+          if [ -d /Applications/Xcode_16.2.app ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app
+          fi
       - name: Tool versions
         run: |
           swift --version
@@ -19,6 +29,8 @@ jobs:
         run: swift build
       - name: Test
         run: swift test
+      - name: CLI smoke
+        run: swift run anvil-runner help
 
   document-registry-policy-check:
     uses: swiftanvil/swiftanvil-enforcement/.github/workflows/document-registry-policy.yml@v1

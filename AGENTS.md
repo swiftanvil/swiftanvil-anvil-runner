@@ -13,8 +13,10 @@ on macOS.
 - Prefer environment variables for credentials.
 - Do not document command examples that encourage token leakage into shell history.
 - Keep CI and enforcement workflows aligned with the current SwiftAnvil organization templates.
-- Use `swift build`, `swift test`, and local SwiftAnvil enforcement before opening a PR.
+- Use `swift build`, `swift test`, and `Scripts/enforce-local.sh` before opening a PR.
 - Public API changes should follow Swift API Design Guidelines and include documentation comments.
+- Keep the managed-worker direction unified for users; do not create new public repositories until an internal
+  boundary has a second concrete consumer.
 
 ## Review Focus
 
@@ -26,3 +28,4 @@ Every substantive change should be reviewed for:
 - idempotence of setup/start/stop/remove operations
 - test coverage for failure paths
 - compatibility with self-hosted macOS runners
+- whether a change belongs in runner lifecycle, capability discovery, host readiness, or host provisioning
