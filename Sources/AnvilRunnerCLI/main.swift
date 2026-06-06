@@ -5,8 +5,32 @@ import AnvilRunner
 struct AnvilRunnerCLI {
     static func main() async {
         let arguments = CommandLine.arguments
+        let jsonMode = arguments.contains("--json")
+
+        // Auto-build detection: if binary is missing, guide the agent
+        let binaryPath = "/Users/vishalsingh/Documents/v-i-s-h-a-l/swiftanvil/swiftanvil-anvil-runner/.build/release/anvil-runner"
+        let fm = FileManager.default
+        if !fm.fileExists(atPath: binaryPath) {
+            if jsonMode {
+                printJSON([
+                    "error": "Binary not built",
+                    "action_required": "Run 'swift build -c release' to build the project",
+                    "current_state": "fresh-clone"
+                ])
+            } else {
+                print("📦 Binary not built yet.")
+                print("")
+                print("To get started, run:")
+                print("  swift build -c release")
+                print("")
+                print("Then re-run this command to see available actions.")
+            }
+            exit(1)
+        }
+
         guard arguments.count > 1 else {
-            printUsage()
+            // Agent-native mode: show current state and available actions
+            await printAgentNativeState()
             return
         }
 
@@ -14,6 +38,8 @@ struct AnvilRunnerCLI {
 
         do {
             switch command {
+            case "agent", "orchestrator":
+                try await runAgentMode(arguments: Array(arguments.dropFirst(2)))
             case "setup":
                 try await setupCommand(arguments: arguments)
             case "start":
@@ -42,6 +68,104 @@ struct AnvilRunnerCLI {
             print("Error: \(error)")
             exit(1)
         }
+    }
+
+    // MARK: - Agent-Native State Display
+
+    private static func printAgentNativeState() async {
+        let orchestrator = RunnerOrchestrator.shared
+        let snapshot = await orchestrator.currentState()
+        print(await orchestrator.whatCanIDo())
+        print("")
+        print("Run 'anvil-runner agent <action-id>' to execute an action.")
+        print("Run 'anvil-runner help' for traditional CLI commands.")
+    }
+
+    // MARK: - Agent Mode
+
+    private static func runAgentMode(arguments: [String]) async throws {
+        let json = arguments.contains("--json")
+        let cleanArgs = arguments.filter { $0 != "--json" }
+
+        guard let actionID = cleanArgs.first else {
+            await printAgentNativeState()
+            return
+        }
+
+        let orchestrator = RunnerOrchestrator.shared
+        let snapshot = await orchestrator.currentState()
+
+        guard let action = snapshot.availableActions.first(where: { $0.id == actionID }) else {
+            let result = RunnerActionResult(
+                actionID: actionID,
+                success: false,
+                message: "Action '\(actionID)' is not available from state '\(snapshot.state.description)'. " +
+                         "Available actions: \(snapshot.availableActions.map(\.id).joined(separator: ", "))"
+            )
+            if json {
+                printJSON(result.toJSON())
+            } else {
+                print("❌ \(result.message)")
+            }
+            exit(1)
+        }
+
+        // Parse parameters from remaining args (--key value)
+        var parameters: [String: String] = [:]
+        var i = 1
+        while i < cleanArgs.count {
+            let arg = cleanArgs[i]
+            if arg.hasPrefix("--"), i + 1 < cleanArgs.count {
+                let key = String(arg.dropFirst(2))
+                parameters[key] = cleanArgs[i + 1]
+                i += 2
+            } else {
+                i += 1
+            }
+        }
+
+        // Confirm destructive actions
+        if action.requiresConfirmation && !json {
+            print("⚠️  Action '\(action.name)' requires confirmation.")
+            print("   \(action.description)")
+            print("   Type 'yes' to proceed: ", terminator: "")
+            guard let response = readLine()?.lowercased(), response == "yes" else {
+                print("Cancelled.")
+                exit(0)
+            }
+        }
+
+        let result = await orchestrator.execute(actionID: actionID, parameters: parameters)
+
+        if json {
+            printJSON(result.toJSON())
+        } else {
+            if result.success {
+                print("✅ \(result.message)")
+            } else {
+                print("❌ \(result.message)")
+            }
+            if !result.details.isEmpty {
+                print("")
+                for (key, value) in result.details {
+                    print("  \(key): \(value)")
+                }
+            }
+            if let newState = result.newState {
+                print("")
+                print("New state: \(newState.description)")
+                let newSnapshot = await orchestrator.currentState()
+                let nextActions = newSnapshot.availableActions
+                if !nextActions.isEmpty {
+                    print("Next available actions:")
+                    for a in nextActions {
+                        print("  • \(a.id) — \(a.name)")
+                    }
+                }
+            }
+        }
+
+        exit(result.success ? 0 : 1)
     }
 
     // MARK: - Commands
@@ -321,12 +445,25 @@ struct AnvilRunnerCLI {
 
     private static func printUsage() {
         print("""
-        anvil-runner — Self-hosted GitHub Actions runner manager for macOS
+        anvil-runner — AI-native self-hosted GitHub Actions runner manager for macOS
 
-        USAGE:
-          anvil-runner <command> [options]
+        AGENT-NATIVE MODE (default):
+          anvil-runner                    Show current state and available actions
+          anvil-runner agent <action>     Execute an action by ID
 
-        COMMANDS:
+        ACTIONS:
+          agent build                     Build the project
+          agent doctor                    Run health checks
+          agent discover                  Discover host capabilities
+          agent setup                     Set up runners for a repo (requires --repo and --token)
+          agent start                     Start configured runners
+          agent stop                      Stop running runners
+          agent remove                    Remove runners (requires --token)
+          agent status                    Check runner health
+          agent clean                     Clean workspace and artifacts
+          agent provision-worker          Apply a worker profile
+
+        TRADITIONAL COMMANDS:
           setup       Install and configure runner instances
           start       Start runner instances
           stop        Stop runner instances
@@ -338,44 +475,8 @@ struct AnvilRunnerCLI {
           provision   Plan or apply worker provisioning (dry-run by default)
           help        Show this help message
 
-        SETUP OPTIONS:
-          --repo, -r <url>       GitHub repository URL
-          --token, -t <token>    GitHub personal access token (prefer ANVIL_RUNNER_TOKEN env var)
-          --count, -c <n>        Number of runner instances (default: 1)
-          --name, -n <prefix>    Runner name prefix (default: macmini)
-          --dir, -d <path>       Install directory (default: ~/actions-runner)
-          --no-ephemeral         Disable ephemeral mode (persist between jobs)
-          --aggressive           Use aggressive cleanup policy
-
-        REMOVE OPTIONS:
-          --token, -t <token>    GitHub runner removal token (prefer ANVIL_RUNNER_REMOVAL_TOKEN)
-          --force-local          Delete local files without unregistering from GitHub
-
-        STATUS OPTIONS:
-          --count, -c <n>        Number of runners to check (default: 1)
-          --name, -n <prefix>    Runner name prefix (default: macmini)
-
-        DISCOVER/DOCTOR OPTIONS:
-          --json                 Output JSON instead of human-readable text
-
-        PROVISION OPTIONS:
-          --profile, -p <name>   Worker profile to apply (default: build-worker)
-          --apply                Apply the plan (default is dry-run)
-          --yes                  Auto-confirm privileged changes
-
-        CLEAN OPTIONS:
-          --workspace <path>     Clean specific workspace path
-          --allow-root <path>    Additional root under which cleanup is allowed
-          --dry-run              Print cleanup actions without deleting files
-          --aggressive           Aggressive cleanup (all caches, derived data)
-
-        EXAMPLES:
-          ANVIL_RUNNER_TOKEN=<token> anvil-runner setup --repo https://github.com/your-org/your-repo --count 2
-          anvil-runner start --count 2
-          anvil-runner status --count 2
-          anvil-runner clean --aggressive
-          anvil-runner provision --profile test-worker
-          anvil-runner provision --profile build-worker --apply --yes
+        OPTIONS:
+          --json                          Output machine-readable JSON
         """)
     }
 
@@ -398,5 +499,14 @@ struct AnvilRunnerCLI {
         for path in result.removedPaths {
             print("Removed \(path)")
         }
+    }
+
+    private static func printJSON(_ object: Any) {
+        guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+              let string = String(data: data, encoding: .utf8) else {
+            print("{\"error\": \"failed to serialize JSON\"}")
+            return
+        }
+        print(string)
     }
 }
