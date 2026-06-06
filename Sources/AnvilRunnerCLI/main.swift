@@ -175,11 +175,10 @@ struct AnvilRunnerCLI {
             ?? extractOption(arguments, key: "-r")
             ?? prompt("GitHub repository URL (e.g., https://github.com/your-org/your-repo): ")
 
-        let token = extractOption(arguments, key: "--token")
+        let explicitToken = extractOption(arguments, key: "--token")
             ?? extractOption(arguments, key: "-t")
             ?? ProcessInfo.processInfo.environment["ANVIL_RUNNER_TOKEN"]
             ?? ProcessInfo.processInfo.environment["GITHUB_TOKEN"]
-            ?? prompt("GitHub personal access token: ")
 
         let count = Int(extractOption(arguments, key: "--count")
             ?? extractOption(arguments, key: "-c")
@@ -195,6 +194,21 @@ struct AnvilRunnerCLI {
 
         let ephemeral = !arguments.contains("--no-ephemeral")
         let aggressive = arguments.contains("--aggressive")
+        let generateToken = arguments.contains("--generate-token")
+
+        // Resolve the registration token. If the user did not provide one and
+        // --generate-token is set (or the URL is an org URL), try to create one
+        // via `gh api`. This produces a helpful error if the `gh` token lacks
+        // the required scope.
+        let token: String
+        if let explicitToken = explicitToken {
+            token = explicitToken
+        } else if generateToken || shouldAutoGenerateToken(for: repo) {
+            print("Generating GitHub Actions runner registration token...")
+            token = try GitHubTokenHelper.generateRegistrationToken(for: repo)
+        } else {
+            token = prompt("GitHub personal access token: ")
+        }
 
         let config = RunnerConfiguration(
             repositoryURL: repo,
@@ -210,6 +224,13 @@ struct AnvilRunnerCLI {
         let lifecycle = RunnerLifecycle()
         try await lifecycle.setup(configuration: config)
         print("✅ Setup complete. Run 'anvil-runner start' to begin.")
+    }
+
+    private static func shouldAutoGenerateToken(for url: String) -> Bool {
+        // Auto-generate for org URLs because they always require a fresh
+        // registration token and are the common case for CI worker setup.
+        guard let parsed = GitHubTokenHelper.parseURL(url) else { return false }
+        return parsed.type == "org"
     }
 
     private static func startCommand(arguments: [String]) async throws {

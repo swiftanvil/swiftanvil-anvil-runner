@@ -34,11 +34,18 @@ public enum ProjectPaths {
         return sourceBased.path
     }
 
-    /// Path to the release binary built by `swift build -c release`.
+    /// Path to the built binary.
+    ///
+    /// Checks both release and debug build directories so that `swift run`
+    /// (debug) and `swift build -c release` (release) both work without
+    /// requiring a rebuild.
     public static var releaseBinary: String {
-        URL(fileURLWithPath: projectRoot)
-            .appendingPathComponent(".build/release/anvil-runner")
-            .path
+        let candidates = [
+            URL(fileURLWithPath: projectRoot).appendingPathComponent(".build/release/anvil-runner").path,
+            URL(fileURLWithPath: projectRoot).appendingPathComponent(".build/debug/anvil-runner").path,
+        ]
+        return candidates.first { FileManager.default.fileExists(atPath: $0) }
+            ?? candidates[0]
     }
 
     // MARK: - Helpers
