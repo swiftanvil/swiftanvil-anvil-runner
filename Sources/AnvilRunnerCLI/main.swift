@@ -8,7 +8,7 @@ struct AnvilRunnerCLI {
         let jsonMode = arguments.contains("--json")
 
         // Auto-build detection: if binary is missing, guide the agent
-        let binaryPath = "/Users/vishalsingh/Documents/v-i-s-h-a-l/swiftanvil/swiftanvil-anvil-runner/.build/release/anvil-runner"
+        let binaryPath = ProjectPaths.releaseBinary
         let fm = FileManager.default
         if !fm.fileExists(atPath: binaryPath) {
             if jsonMode {
