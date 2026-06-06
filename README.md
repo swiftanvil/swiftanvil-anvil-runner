@@ -50,10 +50,21 @@ That's it. The agent reads the repository instructions, detects the machine stat
 
 If you prefer to run commands yourself:
 
+### Option 1: Pre-built binary (fastest)
+
+```bash
+curl -sL https://raw.githubusercontent.com/swiftanvil/swiftanvil-anvil-runner/main/Scripts/install.sh | bash
+```
+
+This downloads the latest release binary from GitHub and installs it to `/usr/local/bin`.
+
+### Option 2: Build from source
+
 ```bash
 git clone https://github.com/swiftanvil/swiftanvil-anvil-runner.git
 cd swiftanvil-anvil-runner
 swift build -c release
+sudo cp .build/release/anvil-runner /usr/local/bin/
 ```
 
 The `anvil-runner` binary will be at `.build/release/anvil-runner`.

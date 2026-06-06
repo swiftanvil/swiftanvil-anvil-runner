@@ -1,0 +1,39 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'anvil-runner-*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and release anvil-runner
+    runs-on: [self-hosted, macOS, ARM64]
+    steps:
+      - name: Checkout anvil-runner
+        uses: actions/checkout@v6
+
+      - name: Select Swift 6 toolchain
+        run: |
+          if [ -d /Applications/Xcode_16.2.app ]; then
+            sudo xcode-select -s /Applications/Xcode_16.2.app
+          fi
+
+      - name: Build universal binary
+        run: |
+          swift build -c release --arch arm64
+          # TODO: add x86_64 when cross-compilation is tested
+          cp .build/release/anvil-runner ./anvil-runner
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${GITHUB_REF_NAME#anvil-runner-}"
+          gh release create "${GITHUB_REF_NAME}" \
+            --title "anvil-runner ${VERSION}" \
+            --generate-notes \
+            ./anvil-runner

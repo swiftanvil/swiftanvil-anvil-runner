@@ -39,7 +39,7 @@ public struct RunnerStateDetector: Sendable {
         
         // Check if binary is built
         let binaryBuilt = FileManager.default.fileExists(
-            atPath: "/Users/vishalsingh/Documents/v-i-s-h-a-l/swiftanvil/swiftanvil-anvil-runner/.build/release/anvil-runner"
+            atPath: ProjectPaths.releaseBinary
         )
         
         if !binaryBuilt {
