@@ -1,5 +1,11 @@
 # AnvilRunner
 
+> **Launch your AI agent and say: "Set up GitHub Actions runners for my repositories on this Mac."**
+>
+> That's it. The agent handles everything else — detecting state, downloading runners, registering with GitHub, and asking you only for what's needed (like your GitHub token).
+
+---
+
 Self-hosted GitHub Actions runner management for macOS.
 
 ## Overview
@@ -19,36 +25,30 @@ small teams who want predictable local CI capacity without cloud-minute constrai
 - **Worker provisioning** — Dry-run-first profile-based host configuration
 - **Multi-instance** — Run 2–4 parallel runners on a single Mac Mini
 
-## Installation
+## Quick Start — AI Agent Mode (Recommended)
 
-### As a Swift Package Dependency
+This repository is designed to be operated by an AI agent. You don't need to know commands.
 
-Add to your `Package.swift`:
+**Step 1:** Clone this repository
 
-```swift
-// swift-tools-version: 6.0
-import PackageDescription
-
-let package = Package(
-    name: "YourProject",
-    dependencies: [
-        .package(
-            url: "https://github.com/swiftanvil/swiftanvil-anvil-runner.git",
-            from: "0.1.0"
-        )
-    ],
-    targets: [
-        .target(
-            name: "YourTarget",
-            dependencies: [
-                .product(name: "AnvilRunner", package: "swiftanvil-anvil-runner")
-            ]
-        )
-    ]
-)
+```bash
+git clone https://github.com/swiftanvil/swiftanvil-anvil-runner.git
+cd swiftanvil-anvil-runner
 ```
 
-### CLI Tool (Standalone)
+**Step 2:** Launch your AI agent (Claude Code, Codex, Kimi, etc.)
+
+**Step 3:** Paste this prompt:
+
+```
+Set up GitHub Actions runners for my repositories on this Mac.
+```
+
+That's it. The agent reads the repository instructions, detects the machine state, and guides you through the rest — asking only for things it needs from you (like your GitHub token and which repositories to connect).
+
+## Quick Start — Manual Mode
+
+If you prefer to run commands yourself:
 
 ```bash
 git clone https://github.com/swiftanvil/swiftanvil-anvil-runner.git
@@ -57,8 +57,6 @@ swift build -c release
 ```
 
 The `anvil-runner` binary will be at `.build/release/anvil-runner`.
-
-## Usage
 
 ### Setup
 
