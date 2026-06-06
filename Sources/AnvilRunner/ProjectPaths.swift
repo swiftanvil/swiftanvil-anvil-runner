@@ -9,29 +9,33 @@ public enum ProjectPaths {
     ///
     /// Resolution order:
     /// 1. `ANVIL_RUNNER_PROJECT_ROOT` environment variable.
-    /// 2. Search upward from `#file` for a directory containing `Package.swift`.
-    /// 3. Search upward from the current working directory.
+    /// 2. Search upward from the current working directory (most reliable at
+    ///    runtime because `swift run` and the built binary are executed from
+    ///    the project root).
+    /// 3. Search upward from `#file` as a compile-time fallback.
     public static var projectRoot: String {
         if let envRoot = ProcessInfo.processInfo.environment["ANVIL_RUNNER_PROJECT_ROOT"],
            isProjectRoot(envRoot) {
             return envRoot
         }
 
-        let sourceFile = URL(fileURLWithPath: #file)
-        if let root = searchProjectRoot(from: sourceFile) {
-            return root
-        }
-
+        // Primary: search upward from the current working directory.
         let cwd = URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
         if let root = searchProjectRoot(from: cwd) {
             return root
         }
 
-        let sourceBased = sourceFile
+        // Fallback: search upward from this source file.
+        let sourceFile = URL(fileURLWithPath: #file)
+        if let root = searchProjectRoot(from: sourceFile) {
+            return root
+        }
+
+        return sourceFile
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
-        return sourceBased.path
+            .path
     }
 
     /// Path to the built binary.
