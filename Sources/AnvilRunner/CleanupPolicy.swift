@@ -80,9 +80,11 @@ public struct CleanupSafetyPolicy: Sendable {
             return false
         }
 
-        guard let allowedRoot = allowedRootDirectories.first(where: { root in
-            candidate == root || candidate.hasPrefix(root + "/")
-        }) else {
+        guard
+            let allowedRoot = allowedRootDirectories.first(where: { root in
+                candidate == root || candidate.hasPrefix(root + "/")
+            })
+        else {
             return false
         }
 
@@ -91,8 +93,10 @@ public struct CleanupSafetyPolicy: Sendable {
         }
 
         return !protectedDirectories.contains { protectedDirectory in
-            guard protectedDirectory != "/",
-                  protectedDirectory.count > allowedRoot.count else {
+            guard
+                protectedDirectory != "/",
+                protectedDirectory.count > allowedRoot.count
+            else {
                 return false
             }
 
@@ -143,13 +147,13 @@ public actor CleanupExecutor {
     public func execute(policy: CleanupPolicy, workspacePath: String) async throws -> CleanupResult {
         switch policy {
         case .minimal:
-            return try await cleanupMinimal(workspacePath: workspacePath)
+            try await cleanupMinimal(workspacePath: workspacePath)
         case .standard:
-            return try await cleanupStandard(workspacePath: workspacePath)
+            try await cleanupStandard(workspacePath: workspacePath)
         case .aggressive:
-            return try await cleanupAggressive(workspacePath: workspacePath)
+            try await cleanupAggressive(workspacePath: workspacePath)
         case .ephemeral:
-            return try await cleanupEphemeral(workspacePath: workspacePath)
+            try await cleanupEphemeral(workspacePath: workspacePath)
         }
     }
 
@@ -237,7 +241,7 @@ public actor CleanupExecutor {
         ]
 
         for path in paths {
-            result = result.appending(try removeItemIfAllowed(atPath: path))
+            result = try result.appending(removeItemIfAllowed(atPath: path))
         }
 
         return result
@@ -249,14 +253,14 @@ public actor CleanupExecutor {
 
         let home = fileManager.homeDirectoryForCurrentUser.path
         let buildPath = "\(home)/.build"
-        result = result.appending(try removeItemIfAllowed(atPath: buildPath))
+        result = try result.appending(removeItemIfAllowed(atPath: buildPath))
 
         // Only remove runner-owned temporary files. Never wipe the entire system temp directory.
         let tmpPath = NSTemporaryDirectory()
         let tmpContents = try fileManager.contentsOfDirectory(atPath: tmpPath)
         for item in tmpContents where Self.isRunnerTemporaryItem(item) {
             let fullPath = "\(tmpPath)/\(item)"
-            result = result.appending(try removeItemIfAllowed(atPath: fullPath))
+            result = try result.appending(removeItemIfAllowed(atPath: fullPath))
         }
 
         return result
@@ -272,13 +276,15 @@ public actor CleanupExecutor {
 
         for item in contents {
             let fullPath = "\(path)/\(item)"
-            guard let attrs = try? fileManager.attributesOfItem(atPath: fullPath),
-                  let modDate = attrs[.modificationDate] as? Date else {
+            guard
+                let attrs = try? fileManager.attributesOfItem(atPath: fullPath),
+                let modDate = attrs[.modificationDate] as? Date
+            else {
                 continue
             }
 
             if modDate < cutoff {
-                result = result.appending(try removeItemIfAllowed(atPath: fullPath))
+                result = try result.appending(removeItemIfAllowed(atPath: fullPath))
             }
         }
 

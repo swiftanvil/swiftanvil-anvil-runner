@@ -4,24 +4,24 @@ import Foundation
 
 /// Represents the current state of runner configuration on this machine.
 public enum RunnerState: String, Sendable, CaseIterable {
-    case freshClone       = "fresh-clone"
-    case built            = "built"
-    case configured       = "configured"
-    case running          = "running"
-    case stopped          = "stopped"
-    
+    case freshClone = "fresh-clone"
+    case built
+    case configured
+    case running
+    case stopped
+
     public var description: String {
         switch self {
         case .freshClone:
-            return "Repository cloned but not built"
+            "Repository cloned but not built"
         case .built:
-            return "Binary built, no runners configured"
+            "Binary built, no runners configured"
         case .configured:
-            return "Runners configured but not started"
+            "Runners configured but not started"
         case .running:
-            return "Runners are active and processing jobs"
+            "Runners are active and processing jobs"
         case .stopped:
-            return "Runners configured but stopped"
+            "Runners configured but stopped"
         }
     }
 }
@@ -29,43 +29,43 @@ public enum RunnerState: String, Sendable, CaseIterable {
 /// Detects the current state of runners by inspecting the filesystem and processes.
 public struct RunnerStateDetector: Sendable {
     public static let shared = RunnerStateDetector()
-    
+
     private let defaultInstallDir = ("~/actions-runner" as NSString).expandingTildeInPath
-    
-    private init() {}
-    
+
+    private init() { }
+
     public func detect(installDirectory: String? = nil) async -> RunnerState {
         let installDir = installDirectory ?? defaultInstallDir
-        
+
         // Check if binary is built
         let binaryBuilt = FileManager.default.fileExists(
             atPath: "/Users/vishalsingh/Documents/v-i-s-h-a-l/swiftanvil/swiftanvil-anvil-runner/.build/release/anvil-runner"
         )
-        
+
         if !binaryBuilt {
             return .freshClone
         }
-        
+
         // Check if any runners are configured
         let runnersConfigured = await hasConfiguredRunners(in: installDir)
-        
+
         if !runnersConfigured {
             return .built
         }
-        
+
         // Check if runners are running
         let runnersRunning = await hasRunningRunners(in: installDir)
-        
+
         if runnersRunning {
             return .running
         }
-        
+
         return .stopped
     }
-    
+
     private func hasConfiguredRunners(in directory: String) async -> Bool {
         guard FileManager.default.fileExists(atPath: directory) else { return false }
-        
+
         do {
             let contents = try FileManager.default.contentsOfDirectory(atPath: directory)
             return contents.contains { item in
@@ -75,12 +75,12 @@ public struct RunnerStateDetector: Sendable {
             return false
         }
     }
-    
-    private func hasRunningRunners(in directory: String) async -> Bool {
+
+    private func hasRunningRunners(in _: String) async -> Bool {
         let process = Process()
         process.executableURL = URL(fileURLWithPath: "/usr/bin/pgrep")
         process.arguments = ["-x", "Runner.Listener"]
-        
+
         do {
             try process.run()
             process.waitUntilExit()
@@ -102,7 +102,7 @@ public struct RunnerAction: Sendable, Identifiable {
     public let requiresToken: Bool
     public let parameters: [RunnerActionParameter]
     public let availableFromStates: [RunnerState]
-    
+
     public init(
         id: String,
         name: String,
@@ -129,7 +129,7 @@ public struct RunnerActionParameter: Sendable {
     public let description: String
     public let required: Bool
     public let defaultValue: String?
-    
+
     public enum ParameterType: String, Sendable {
         case string
         case boolean
@@ -138,7 +138,7 @@ public struct RunnerActionParameter: Sendable {
         case url
         case token
     }
-    
+
     public init(
         name: String,
         type: ParameterType,
@@ -157,7 +157,7 @@ public struct RunnerActionParameter: Sendable {
 /// Discovers all available actions from the current runner state.
 public struct RunnerActionDiscovery: Sendable {
     public static let shared = RunnerActionDiscovery()
-    
+
     private let allActions: [RunnerAction] = [
         RunnerAction(
             id: "build",
@@ -185,10 +185,33 @@ public struct RunnerActionDiscovery: Sendable {
             requiresToken: true,
             parameters: [
                 RunnerActionParameter(name: "repo", type: .url, description: "GitHub repository URL", required: true),
-                RunnerActionParameter(name: "token", type: .token, description: "GitHub personal access token with repo scope", required: true),
-                RunnerActionParameter(name: "count", type: .integer, description: "Number of runner instances", required: false, defaultValue: "2"),
-                RunnerActionParameter(name: "name-prefix", type: .string, description: "Runner name prefix", required: false, defaultValue: "macmini"),
-                RunnerActionParameter(name: "install-dir", type: .path, description: "Installation directory", required: false, defaultValue: "~/actions-runner"),
+                RunnerActionParameter(
+                    name: "token",
+                    type: .token,
+                    description: "GitHub personal access token with repo scope",
+                    required: true
+                ),
+                RunnerActionParameter(
+                    name: "count",
+                    type: .integer,
+                    description: "Number of runner instances",
+                    required: false,
+                    defaultValue: "2"
+                ),
+                RunnerActionParameter(
+                    name: "name-prefix",
+                    type: .string,
+                    description: "Runner name prefix",
+                    required: false,
+                    defaultValue: "macmini"
+                ),
+                RunnerActionParameter(
+                    name: "install-dir",
+                    type: .path,
+                    description: "Installation directory",
+                    required: false,
+                    defaultValue: "~/actions-runner"
+                )
             ],
             availableFromStates: [.freshClone, .built, .stopped]
         ),
@@ -197,8 +220,20 @@ public struct RunnerActionDiscovery: Sendable {
             name: "Start runners",
             description: "Launch configured runner instances",
             parameters: [
-                RunnerActionParameter(name: "count", type: .integer, description: "Number of runners to start", required: false, defaultValue: "2"),
-                RunnerActionParameter(name: "name-prefix", type: .string, description: "Runner name prefix", required: false, defaultValue: "macmini"),
+                RunnerActionParameter(
+                    name: "count",
+                    type: .integer,
+                    description: "Number of runners to start",
+                    required: false,
+                    defaultValue: "2"
+                ),
+                RunnerActionParameter(
+                    name: "name-prefix",
+                    type: .string,
+                    description: "Runner name prefix",
+                    required: false,
+                    defaultValue: "macmini"
+                )
             ],
             availableFromStates: [.configured, .stopped]
         ),
@@ -208,8 +243,20 @@ public struct RunnerActionDiscovery: Sendable {
             description: "Gracefully stop running runner instances",
             requiresConfirmation: true,
             parameters: [
-                RunnerActionParameter(name: "count", type: .integer, description: "Number of runners to stop", required: false, defaultValue: "2"),
-                RunnerActionParameter(name: "name-prefix", type: .string, description: "Runner name prefix", required: false, defaultValue: "macmini"),
+                RunnerActionParameter(
+                    name: "count",
+                    type: .integer,
+                    description: "Number of runners to stop",
+                    required: false,
+                    defaultValue: "2"
+                ),
+                RunnerActionParameter(
+                    name: "name-prefix",
+                    type: .string,
+                    description: "Runner name prefix",
+                    required: false,
+                    defaultValue: "macmini"
+                )
             ],
             availableFromStates: [.running]
         ),
@@ -220,10 +267,33 @@ public struct RunnerActionDiscovery: Sendable {
             requiresConfirmation: true,
             requiresToken: true,
             parameters: [
-                RunnerActionParameter(name: "count", type: .integer, description: "Number of runners to remove", required: false, defaultValue: "2"),
-                RunnerActionParameter(name: "name-prefix", type: .string, description: "Runner name prefix", required: false, defaultValue: "macmini"),
-                RunnerActionParameter(name: "token", type: .token, description: "GitHub runner removal token", required: true),
-                RunnerActionParameter(name: "force-local", type: .boolean, description: "Delete local files without unregistering from GitHub", required: false, defaultValue: "false"),
+                RunnerActionParameter(
+                    name: "count",
+                    type: .integer,
+                    description: "Number of runners to remove",
+                    required: false,
+                    defaultValue: "2"
+                ),
+                RunnerActionParameter(
+                    name: "name-prefix",
+                    type: .string,
+                    description: "Runner name prefix",
+                    required: false,
+                    defaultValue: "macmini"
+                ),
+                RunnerActionParameter(
+                    name: "token",
+                    type: .token,
+                    description: "GitHub runner removal token",
+                    required: true
+                ),
+                RunnerActionParameter(
+                    name: "force-local",
+                    type: .boolean,
+                    description: "Delete local files without unregistering from GitHub",
+                    required: false,
+                    defaultValue: "false"
+                )
             ],
             availableFromStates: [.configured, .running, .stopped]
         ),
@@ -232,8 +302,20 @@ public struct RunnerActionDiscovery: Sendable {
             name: "Check runner status",
             description: "Show health and status of all runner instances",
             parameters: [
-                RunnerActionParameter(name: "count", type: .integer, description: "Number of runners to check", required: false, defaultValue: "2"),
-                RunnerActionParameter(name: "name-prefix", type: .string, description: "Runner name prefix", required: false, defaultValue: "macmini"),
+                RunnerActionParameter(
+                    name: "count",
+                    type: .integer,
+                    description: "Number of runners to check",
+                    required: false,
+                    defaultValue: "2"
+                ),
+                RunnerActionParameter(
+                    name: "name-prefix",
+                    type: .string,
+                    description: "Runner name prefix",
+                    required: false,
+                    defaultValue: "macmini"
+                )
             ],
             availableFromStates: [.configured, .running, .stopped]
         ),
@@ -243,9 +325,26 @@ public struct RunnerActionDiscovery: Sendable {
             description: "Remove build artifacts and free disk space",
             requiresConfirmation: true,
             parameters: [
-                RunnerActionParameter(name: "workspace", type: .path, description: "Specific workspace path to clean", required: false),
-                RunnerActionParameter(name: "aggressive", type: .boolean, description: "Aggressive cleanup (all caches, derived data)", required: false, defaultValue: "false"),
-                RunnerActionParameter(name: "dry-run", type: .boolean, description: "Show what would be deleted without deleting", required: false, defaultValue: "false"),
+                RunnerActionParameter(
+                    name: "workspace",
+                    type: .path,
+                    description: "Specific workspace path to clean",
+                    required: false
+                ),
+                RunnerActionParameter(
+                    name: "aggressive",
+                    type: .boolean,
+                    description: "Aggressive cleanup (all caches, derived data)",
+                    required: false,
+                    defaultValue: "false"
+                ),
+                RunnerActionParameter(
+                    name: "dry-run",
+                    type: .boolean,
+                    description: "Show what would be deleted without deleting",
+                    required: false,
+                    defaultValue: "false"
+                )
             ],
             availableFromStates: [.built, .configured, .running, .stopped]
         ),
@@ -254,24 +353,44 @@ public struct RunnerActionDiscovery: Sendable {
             name: "Provision worker profile",
             description: "Apply a worker profile (dry-run by default)",
             parameters: [
-                RunnerActionParameter(name: "profile", type: .string, description: "Worker profile name", required: false, defaultValue: "build-worker"),
-                RunnerActionParameter(name: "apply", type: .boolean, description: "Apply the plan (default is dry-run)", required: false, defaultValue: "false"),
-                RunnerActionParameter(name: "yes", type: .boolean, description: "Auto-confirm privileged changes", required: false, defaultValue: "false"),
+                RunnerActionParameter(
+                    name: "profile",
+                    type: .string,
+                    description: "Worker profile name",
+                    required: false,
+                    defaultValue: "build-worker"
+                ),
+                RunnerActionParameter(
+                    name: "apply",
+                    type: .boolean,
+                    description: "Apply the plan (default is dry-run)",
+                    required: false,
+                    defaultValue: "false"
+                ),
+                RunnerActionParameter(
+                    name: "yes",
+                    type: .boolean,
+                    description: "Auto-confirm privileged changes",
+                    required: false,
+                    defaultValue: "false"
+                )
             ],
             availableFromStates: [.freshClone, .built, .configured, .running, .stopped]
-        ),
+        )
     ]
-    
-    private init() {}
-    
+
+    private init() { }
+
     /// Returns all actions available from the given state.
     public func availableActions(from state: RunnerState) -> [RunnerAction] {
         allActions.filter { $0.availableFromStates.contains(state) }
     }
-    
+
     /// Returns all possible actions (for documentation).
-    public func allActionsList() -> [RunnerAction] { allActions }
-    
+    public func allActionsList() -> [RunnerAction] {
+        allActions
+    }
+
     /// Finds an action by ID.
     public func action(id: String) -> RunnerAction? {
         allActions.first { $0.id == id }
@@ -287,7 +406,7 @@ public struct RunnerActionResult: Sendable {
     public let message: String
     public let details: [String: String]
     public let newState: RunnerState?
-    
+
     public init(
         actionID: String,
         success: Bool,
@@ -305,8 +424,8 @@ public struct RunnerActionResult: Sendable {
 
 // MARK: - JSON Serialization
 
-extension RunnerState {
-    public func toJSON() -> [String: Any] {
+public extension RunnerState {
+    func toJSON() -> [String: Any] {
         [
             "state": rawValue,
             "description": description,
@@ -315,8 +434,8 @@ extension RunnerState {
     }
 }
 
-extension RunnerAction {
-    public func toJSON() -> [String: Any] {
+public extension RunnerAction {
+    func toJSON() -> [String: Any] {
         [
             "id": id,
             "name": name,
@@ -328,8 +447,8 @@ extension RunnerAction {
     }
 }
 
-extension RunnerActionParameter {
-    public func toJSON() -> [String: Any] {
+public extension RunnerActionParameter {
+    func toJSON() -> [String: Any] {
         var dict: [String: Any] = [
             "name": name,
             "type": type.rawValue,
@@ -343,8 +462,8 @@ extension RunnerActionParameter {
     }
 }
 
-extension RunnerActionResult {
-    public func toJSON() -> [String: Any] {
+public extension RunnerActionResult {
+    func toJSON() -> [String: Any] {
         var dict: [String: Any] = [
             "action_id": actionID,
             "success": success,

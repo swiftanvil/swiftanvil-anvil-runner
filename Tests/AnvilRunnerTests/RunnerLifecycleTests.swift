@@ -3,13 +3,12 @@ import Testing
 @testable import AnvilRunner
 
 struct RunnerLifecycleTests {
-
     @Test
     func runnerErrorCases() {
-        let _ = RunnerError.processFailed(exitCode: 1)
-        let _ = RunnerError.downloadFailed(URL: "https://example.com")
-        let _ = RunnerError.configurationFailed(reason: "missing token")
-        let _ = RunnerError.invalidRunnerName("../runner")
+        _ = RunnerError.processFailed(exitCode: 1)
+        _ = RunnerError.downloadFailed(URL: "https://example.com")
+        _ = RunnerError.configurationFailed(reason: "missing token")
+        _ = RunnerError.invalidRunnerName("../runner")
 
         // All error cases constructible — test passes if we reach here
     }
@@ -17,7 +16,7 @@ struct RunnerLifecycleTests {
     @Test
     func runnerErrorExitCode() {
         let error = RunnerError.processFailed(exitCode: 42)
-        if case .processFailed(let code) = error {
+        if case let .processFailed(code) = error {
             #expect(code == 42)
         } else {
             Issue.record("Expected processFailed case")
@@ -29,7 +28,7 @@ struct RunnerLifecycleTests {
         let url = "https://github.com/actions/runner/releases/download/v2.334.0/" +
             "actions-runner-osx-arm64-2.334.0.tar.gz"
         let error = RunnerError.downloadFailed(URL: url)
-        if case .downloadFailed(let failedURL) = error {
+        if case let .downloadFailed(failedURL) = error {
             #expect(failedURL == url)
         } else {
             Issue.record("Expected downloadFailed case")
@@ -40,7 +39,7 @@ struct RunnerLifecycleTests {
     func runnerErrorConfigurationReason() {
         let reason = "invalid repository URL"
         let error = RunnerError.configurationFailed(reason: reason)
-        if case .configurationFailed(let failedReason) = error {
+        if case let .configurationFailed(failedReason) = error {
             #expect(failedReason == reason)
         } else {
             Issue.record("Expected configurationFailed case")
@@ -48,7 +47,7 @@ struct RunnerLifecycleTests {
     }
 
     @Test
-    func detectArchitectureReturnsValidValue() async {
+    func detectArchitectureReturnsValidValue() {
         let lifecycle = RunnerLifecycle()
         // Verify the actor initializes without crashing
         _ = lifecycle

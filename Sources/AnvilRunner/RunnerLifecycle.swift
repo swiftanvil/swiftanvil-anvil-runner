@@ -14,7 +14,7 @@ public actor RunnerLifecycle {
         self.runnerVersion = runnerVersion
         self.safetyPolicy = safetyPolicy
         let arch = Self.detectArchitecture()
-        self.runnerDownloadURL =
+        runnerDownloadURL =
             "https://github.com/actions/runner/releases/download/v\(runnerVersion)/" +
             "actions-runner-osx-\(arch)-\(runnerVersion).tar.gz"
     }
@@ -40,7 +40,7 @@ public actor RunnerLifecycle {
         }
 
         // Configure each runner instance
-        for i in 1...configuration.runnerCount {
+        for i in 1 ... configuration.runnerCount {
             let runnerName = "\(configuration.namePrefix)-\(i)"
             let runnerDir = try Self.runnerDirectory(named: runnerName, under: installDir)
 
@@ -56,7 +56,7 @@ public actor RunnerLifecycle {
     /// Starts all configured runner instances as background services.
     public func start(installDirectory: String, count: Int, namePrefix: String) async throws {
         let installDirectory = CleanupSafetyPolicy.standardizedPath(installDirectory)
-        for i in 1...max(1, count) {
+        for i in 1 ... max(1, count) {
             let runnerName = "\(namePrefix)-\(i)"
             let runnerDir = try Self.runnerDirectory(named: runnerName, under: installDirectory)
             try startRunner(in: runnerDir)
@@ -66,7 +66,7 @@ public actor RunnerLifecycle {
     /// Stops all running runner instances.
     public func stop(installDirectory: String, count: Int, namePrefix: String) async throws {
         let installDirectory = CleanupSafetyPolicy.standardizedPath(installDirectory)
-        for i in 1...max(1, count) {
+        for i in 1 ... max(1, count) {
             let runnerName = "\(namePrefix)-\(i)"
             let runnerDir = try Self.runnerDirectory(named: runnerName, under: installDirectory)
             try await terminateRunner(named: runnerName, in: runnerDir)
@@ -82,7 +82,7 @@ public actor RunnerLifecycle {
         forceLocal: Bool = false
     ) async throws {
         let installDirectory = CleanupSafetyPolicy.standardizedPath(installDirectory)
-        for i in 1...max(1, count) {
+        for i in 1 ... max(1, count) {
             let runnerName = "\(namePrefix)-\(i)"
             let runnerDir = try Self.runnerDirectory(named: runnerName, under: installDirectory)
             if fileManager.fileExists(atPath: runnerDir) {
@@ -214,7 +214,7 @@ public actor RunnerLifecycle {
     }
 
     private func runProcess(_ process: Process) async throws {
-        return try await withCheckedThrowingContinuation { continuation in
+        try await withCheckedThrowingContinuation { continuation in
             process.terminationHandler = { proc in
                 if proc.terminationStatus == 0 {
                     continuation.resume()
@@ -236,16 +236,20 @@ public actor RunnerLifecycle {
         let standardizedRunnerDirectory = URL(fileURLWithPath: runnerDirectory).standardizedFileURL.path
         return processList.split(separator: "\n").compactMap { line in
             let parts = line.split(separator: " ", maxSplits: 1, omittingEmptySubsequences: true)
-            guard let pidText = parts.first,
-                  let pid = Int32(pidText),
-                  parts.count == 2 else {
+            guard
+                let pidText = parts.first,
+                let pid = Int32(pidText),
+                parts.count == 2
+            else {
                 return nil
             }
 
             let command = String(parts[1])
-            guard command.contains(runnerName),
-                  Self.command(command, containsPathBoundaryFor: standardizedRunnerDirectory) ||
-                  Self.command(command, containsPathBoundaryFor: runnerDirectory) else {
+            guard
+                command.contains(runnerName),
+                Self.command(command, containsPathBoundaryFor: standardizedRunnerDirectory) ||
+                Self.command(command, containsPathBoundaryFor: runnerDirectory)
+            else {
                 return nil
             }
 
@@ -287,9 +291,9 @@ public actor RunnerLifecycle {
 
     static func detectArchitecture() -> String {
         #if arch(arm64)
-        return "arm64"
+            return "arm64"
         #else
-        return "x64"
+            return "x64"
         #endif
     }
 }

@@ -111,7 +111,9 @@ public struct ProvisioningPlan: Sendable {
     public var profileName: String
     public var changes: [PlannedChange]
     public var guidance: [UserGuidance]
-    public var isNoOp: Bool { changes.isEmpty && guidance.isEmpty }
+    public var isNoOp: Bool {
+        changes.isEmpty && guidance.isEmpty
+    }
 
     public init(profileName: String, changes: [PlannedChange], guidance: [UserGuidance]) {
         self.profileName = profileName
@@ -209,9 +211,9 @@ public struct ProvisioningError: Error, Sendable {
 
 // MARK: - Built-in Profiles
 
-extension WorkerProfile {
+public extension WorkerProfile {
     /// A standard build worker profile.
-    public static var buildWorker: WorkerProfile {
+    static var buildWorker: WorkerProfile {
         WorkerProfile(
             name: "build-worker",
             description: "Standard CI build worker with Swift toolchain and GitHub CLI",
@@ -238,7 +240,7 @@ extension WorkerProfile {
     }
 
     /// A test worker profile with more disk space for simulators.
-    public static var testWorker: WorkerProfile {
+    static var testWorker: WorkerProfile {
         WorkerProfile(
             name: "test-worker",
             description: "CI test worker with Xcode simulators and larger disk allocation",
@@ -266,7 +268,7 @@ extension WorkerProfile {
     }
 
     /// A review worker profile for PR checks.
-    public static var reviewWorker: WorkerProfile {
+    static var reviewWorker: WorkerProfile {
         WorkerProfile(
             name: "review-worker",
             description: "Lightweight PR review worker",
@@ -293,7 +295,7 @@ extension WorkerProfile {
     }
 
     /// All built-in profiles.
-    public static var allBuiltIn: [WorkerProfile] {
+    static var allBuiltIn: [WorkerProfile] {
         [buildWorker, testWorker, reviewWorker]
     }
 }

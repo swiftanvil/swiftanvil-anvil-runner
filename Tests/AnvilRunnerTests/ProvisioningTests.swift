@@ -19,7 +19,7 @@ struct WorkerProfileTests {
     }
 
     @Test("test-worker profile requires more disk space")
-    func testWorkerRequirements() {
+    func workerRequirements() {
         let profile = WorkerProfile.testWorker
         #expect(profile.role == .test)
         #expect(profile.requirements.minFreeDiskGB == 100)

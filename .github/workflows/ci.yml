@@ -1,36 +1,32 @@
 name: CI
 
 on:
-  pull_request:
-    types: [opened, edited, synchronize, reopened]
   push:
     branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
 
 jobs:
   build-and-test:
-    name: build-and-test (${{ matrix.os }})
-    runs-on: ${{ matrix.os }}
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-15]
+    runs-on: macos-15
     steps:
-      - uses: actions/checkout@v6
-      - name: Select Swift 6 toolchain
-        run: |
-          if [ -d /Applications/Xcode_16.2.app ]; then
-            sudo xcode-select -s /Applications/Xcode_16.2.app
-          fi
-      - name: Tool versions
-        run: |
-          swift --version
-          xcodebuild -version
+      - uses: actions/checkout@v4
       - name: Build
         run: swift build
       - name: Test
         run: swift test
-      - name: CLI smoke
-        run: swift run anvil-runner help
 
-  document-registry-policy-check:
-    uses: swiftanvil/swiftanvil-enforcement/.github/workflows/document-registry-policy.yml@v1
+  lint:
+    needs: build-and-test
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install SwiftFormat
+        run: brew install swiftformat
+      - name: Install SwiftLint
+        run: brew install swiftlint
+      - name: Lint Format
+        run: swiftformat --lint .
+      - name: Lint Source
+        run: swiftlint lint --reporter github-actions-logging

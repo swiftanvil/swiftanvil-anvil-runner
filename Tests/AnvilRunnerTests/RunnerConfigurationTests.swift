@@ -3,7 +3,6 @@ import Testing
 @testable import AnvilRunner
 
 struct RunnerConfigurationTests {
-
     @Test
     func defaultConfiguration() {
         let config = RunnerConfiguration(

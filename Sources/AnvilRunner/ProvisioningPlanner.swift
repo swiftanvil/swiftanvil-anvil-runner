@@ -17,6 +17,7 @@ public actor ProvisioningPlanner {
         var guidance: [UserGuidance] = []
 
         // MARK: Toolchain checks
+
         if profile.requirements.requiresGitHubCLI, !report.capabilities.githubCLI.installed {
             guidance.append(UserGuidance(
                 id: "install-gh-cli",
@@ -51,6 +52,7 @@ public actor ProvisioningPlanner {
         }
 
         // MARK: Network checks
+
         if profile.networkSettings?.sshEnabled == true, !report.network.ssh.installed {
             guidance.append(UserGuidance(
                 id: "enable-ssh",
@@ -70,6 +72,7 @@ public actor ProvisioningPlanner {
         }
 
         // MARK: Power checks
+
         if let power = profile.powerSettings {
             if power.preventSleep, !report.power.preventSleep {
                 changes.append(PlannedChange(
@@ -101,6 +104,7 @@ public actor ProvisioningPlanner {
         }
 
         // MARK: Disk / Memory checks
+
         if let minDisk = profile.requirements.minFreeDiskGB {
             guidance.append(UserGuidance(
                 id: "disk-check",
@@ -131,7 +135,7 @@ public actor ProvisioningPlanner {
         let currentParts = current.split(separator: ".").compactMap { Int($0) }
         let minimumParts = minimum.split(separator: ".").compactMap { Int($0) }
         let maxLength = max(currentParts.count, minimumParts.count)
-        for i in 0..<maxLength {
+        for i in 0 ..< maxLength {
             let c = i < currentParts.count ? currentParts[i] : 0
             let m = i < minimumParts.count ? minimumParts[i] : 0
             if c > m { return true }

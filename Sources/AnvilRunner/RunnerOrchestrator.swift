@@ -4,30 +4,30 @@ import Foundation
 /// Designed for AI agent consumption — no CLI knowledge required.
 public actor RunnerOrchestrator {
     public static let shared = RunnerOrchestrator()
-    
+
     private let detector = RunnerStateDetector.shared
     private let discovery = RunnerActionDiscovery.shared
-    
-    private init() {}
-    
+
+    private init() { }
+
     // MARK: - State & Discovery
-    
+
     /// Returns the current state with all available actions.
     public func currentState(installDirectory: String? = nil) async -> RunnerStateSnapshot {
         let state = await detector.detect(installDirectory: installDirectory)
         let actions = discovery.availableActions(from: state)
         return RunnerStateSnapshot(state: state, availableActions: actions)
     }
-    
+
     /// Returns a human-readable summary of what's possible right now.
     public func whatCanIDo(installDirectory: String? = nil) async -> String {
         let snapshot = await currentState(installDirectory: installDirectory)
         var lines: [String] = []
-        
+
         lines.append("📍 Current State: \(snapshot.state.description)")
         lines.append("")
         lines.append("Available Actions:")
-        
+
         for action in snapshot.availableActions {
             let confirm = action.requiresConfirmation ? " ⚠️" : ""
             let token = action.requiresToken ? " 🔑" : ""
@@ -41,12 +41,12 @@ public actor RunnerOrchestrator {
                 }
             }
         }
-        
+
         return lines.joined(separator: "\n")
     }
-    
+
     // MARK: - Safe Execution
-    
+
     /// Executes an action by ID, returning a structured result.
     /// This is the primary agent interface — no shell commands needed.
     public func execute(
@@ -61,17 +61,17 @@ public actor RunnerOrchestrator {
                 message: "Unknown action: \(actionID)"
             )
         }
-        
+
         let current = await detector.detect(installDirectory: installDirectory)
         guard action.availableFromStates.contains(current) else {
             return RunnerActionResult(
                 actionID: actionID,
                 success: false,
                 message: "Action '\(action.name)' is not available from state '\(current.description)'. " +
-                         "Available from: \(action.availableFromStates.map(\.description).joined(separator: ", "))"
+                    "Available from: \(action.availableFromStates.map(\.description).joined(separator: ", "))"
             )
         }
-        
+
         do {
             return try await executeAction(action, parameters: parameters, installDirectory: installDirectory)
         } catch {
@@ -82,45 +82,45 @@ public actor RunnerOrchestrator {
             )
         }
     }
-    
+
     /// Executes an action with automatic state re-detection afterward.
     private func executeAction(
         _ action: RunnerAction,
         parameters: [String: String],
-        installDirectory: String?
+        installDirectory _: String?
     ) async throws -> RunnerActionResult {
         switch action.id {
         case "build":
-            return try await executeBuild()
+            try await executeBuild()
         case "doctor":
-            return try await executeDoctor()
+            try await executeDoctor()
         case "discover":
-            return try await executeDiscover()
+            try await executeDiscover()
         case "setup":
-            return try await executeSetup(parameters: parameters)
+            try await executeSetup(parameters: parameters)
         case "start":
-            return try await executeStart(parameters: parameters)
+            try await executeStart(parameters: parameters)
         case "stop":
-            return try await executeStop(parameters: parameters)
+            try await executeStop(parameters: parameters)
         case "remove":
-            return try await executeRemove(parameters: parameters)
+            try await executeRemove(parameters: parameters)
         case "status":
-            return try await executeStatus(parameters: parameters)
+            try await executeStatus(parameters: parameters)
         case "clean":
-            return try await executeClean(parameters: parameters)
+            try await executeClean(parameters: parameters)
         case "provision-worker":
-            return try await executeProvisionWorker(parameters: parameters)
+            try await executeProvisionWorker(parameters: parameters)
         default:
-            return RunnerActionResult(
+            RunnerActionResult(
                 actionID: action.id,
                 success: false,
                 message: "Action '\(action.id)' is defined but not yet implemented"
             )
         }
     }
-    
+
     // MARK: - Action Implementations
-    
+
     private func executeBuild() async throws -> RunnerActionResult {
         let (out, err, status) = shell("/usr/bin/swift", ["build", "-c", "release"])
         let success = status == 0
@@ -132,18 +132,18 @@ public actor RunnerOrchestrator {
             newState: success ? .built : nil
         )
     }
-    
+
     private func executeDoctor() async throws -> RunnerActionResult {
         let discovery = CapabilityDiscovery()
         let report = await discovery.doctor()
-        
+
         let hasFailures = report.checks.contains { $0.status == .fail }
         var details: [String: String] = [:]
         for check in report.checks {
             let symbol = check.status == .pass ? "✓" : (check.status == .warn ? "⚠️" : "✗")
             details[check.id] = "\(symbol) \(check.message)"
         }
-        
+
         return RunnerActionResult(
             actionID: "doctor",
             success: !hasFailures,
@@ -151,17 +151,20 @@ public actor RunnerOrchestrator {
             details: details
         )
     }
-    
+
     private func executeDiscover() async throws -> RunnerActionResult {
         let discovery = CapabilityDiscovery()
         let report = await discovery.discover()
-        
+
         let details: [String: String] = [
             "host": "\(report.host.hostname) (macOS \(report.host.platformVersion), \(report.host.architecture))",
-            "swift": report.capabilities.swift.installed ? (report.capabilities.swift.version ?? "installed") : "not found",
-            "xcode": report.capabilities.xcode.installed ? (report.capabilities.xcode.version ?? "installed") : "not found",
+            "swift": report.capabilities.swift
+                .installed ? (report.capabilities.swift.version ?? "installed") : "not found",
+            "xcode": report.capabilities.xcode
+                .installed ? (report.capabilities.xcode.version ?? "installed") : "not found",
             "git": report.capabilities.git.installed ? (report.capabilities.git.version ?? "installed") : "not found",
-            "github_cli": report.capabilities.githubCLI.installed ? (report.capabilities.githubCLI.version ?? "installed") : "not found",
+            "github_cli": report.capabilities.githubCLI
+                .installed ? (report.capabilities.githubCLI.version ?? "installed") : "not found",
             "claude": report.agents.claude.installed ? "✓" : "✗",
             "codex": report.agents.codex.installed ? "✓" : "✗",
             "gemini": report.agents.gemini.installed ? "✓" : "✗",
@@ -170,7 +173,7 @@ public actor RunnerOrchestrator {
             "ac_power": report.power.onACPower ? "✓" : "✗",
             "sleep_prevented": report.power.preventSleep ? "✓" : "✗"
         ]
-        
+
         return RunnerActionResult(
             actionID: "discover",
             success: true,
@@ -178,7 +181,7 @@ public actor RunnerOrchestrator {
             details: details
         )
     }
-    
+
     private func executeSetup(parameters: [String: String]) async throws -> RunnerActionResult {
         guard let repo = parameters["repo"] else {
             return RunnerActionResult(
@@ -187,7 +190,7 @@ public actor RunnerOrchestrator {
                 message: "Missing required parameter: repo (GitHub repository URL)"
             )
         }
-        
+
         guard let token = parameters["token"] ?? ProcessInfo.processInfo.environment["ANVIL_RUNNER_TOKEN"] else {
             return RunnerActionResult(
                 actionID: "setup",
@@ -195,11 +198,11 @@ public actor RunnerOrchestrator {
                 message: "Missing required parameter: token. Provide it as a parameter or set ANVIL_RUNNER_TOKEN environment variable."
             )
         }
-        
+
         let count = Int(parameters["count"] ?? "2") ?? 2
         let namePrefix = parameters["name-prefix"] ?? "macmini"
         let installDir = parameters["install-dir"] ?? "~/actions-runner"
-        
+
         let config = RunnerConfiguration(
             repositoryURL: repo,
             token: token,
@@ -207,10 +210,10 @@ public actor RunnerOrchestrator {
             namePrefix: namePrefix,
             installDirectory: installDir
         )
-        
+
         let lifecycle = RunnerLifecycle()
         try await lifecycle.setup(configuration: config)
-        
+
         return RunnerActionResult(
             actionID: "setup",
             success: true,
@@ -224,15 +227,15 @@ public actor RunnerOrchestrator {
             newState: .configured
         )
     }
-    
+
     private func executeStart(parameters: [String: String]) async throws -> RunnerActionResult {
         let count = Int(parameters["count"] ?? "2") ?? 2
         let namePrefix = parameters["name-prefix"] ?? "macmini"
         let installDir = ((parameters["install-dir"] ?? "~/actions-runner") as NSString).expandingTildeInPath
-        
+
         let lifecycle = RunnerLifecycle()
         try await lifecycle.start(installDirectory: installDir, count: count, namePrefix: namePrefix)
-        
+
         return RunnerActionResult(
             actionID: "start",
             success: true,
@@ -244,15 +247,15 @@ public actor RunnerOrchestrator {
             newState: .running
         )
     }
-    
+
     private func executeStop(parameters: [String: String]) async throws -> RunnerActionResult {
         let count = Int(parameters["count"] ?? "2") ?? 2
         let namePrefix = parameters["name-prefix"] ?? "macmini"
         let installDir = ((parameters["install-dir"] ?? "~/actions-runner") as NSString).expandingTildeInPath
-        
+
         let lifecycle = RunnerLifecycle()
         try await lifecycle.stop(installDirectory: installDir, count: count, namePrefix: namePrefix)
-        
+
         return RunnerActionResult(
             actionID: "stop",
             success: true,
@@ -264,25 +267,25 @@ public actor RunnerOrchestrator {
             newState: .stopped
         )
     }
-    
+
     private func executeRemove(parameters: [String: String]) async throws -> RunnerActionResult {
         let count = Int(parameters["count"] ?? "2") ?? 2
         let namePrefix = parameters["name-prefix"] ?? "macmini"
         let installDir = ((parameters["install-dir"] ?? "~/actions-runner") as NSString).expandingTildeInPath
         let forceLocal = parameters["force-local"]?.lowercased() == "true"
-        
+
         let token = parameters["token"]
             ?? ProcessInfo.processInfo.environment["ANVIL_RUNNER_REMOVAL_TOKEN"]
             ?? ProcessInfo.processInfo.environment["ANVIL_RUNNER_TOKEN"]
-        
-        if !forceLocal && token == nil {
+
+        if !forceLocal, token == nil {
             return RunnerActionResult(
                 actionID: "remove",
                 success: false,
                 message: "Removal token required. Provide token parameter, set ANVIL_RUNNER_REMOVAL_TOKEN, or use force-local=true"
             )
         }
-        
+
         let lifecycle = RunnerLifecycle()
         try await lifecycle.remove(
             installDirectory: installDir,
@@ -291,7 +294,7 @@ public actor RunnerOrchestrator {
             token: token,
             forceLocal: forceLocal
         )
-        
+
         return RunnerActionResult(
             actionID: "remove",
             success: true,
@@ -304,24 +307,24 @@ public actor RunnerOrchestrator {
             newState: .built
         )
     }
-    
+
     private func executeStatus(parameters: [String: String]) async throws -> RunnerActionResult {
         let count = Int(parameters["count"] ?? "2") ?? 2
         let namePrefix = parameters["name-prefix"] ?? "macmini"
         let installDir = ((parameters["install-dir"] ?? "~/actions-runner") as NSString).expandingTildeInPath
-        
+
         let monitor = HealthMonitor()
         let statuses = await monitor.checkFleet(installDirectory: installDir, count: count, namePrefix: namePrefix)
-        
+
         var details: [String: String] = [:]
         for status in statuses {
             let state = status.isRunning ? "🟢 Running" : "🔴 Stopped"
             details[status.name] = "\(state) | Disk: \(status.diskUsagePercent)% | Memory: \(status.memoryUsagePercent)%"
         }
-        
-        let anyRunning = statuses.contains(where: { $0.isRunning })
-        let runningCount = statuses.filter({ $0.isRunning }).count
-        
+
+        let anyRunning = statuses.contains(where: \.isRunning)
+        let runningCount = statuses.count(where: { $0.isRunning })
+
         return RunnerActionResult(
             actionID: "status",
             success: true,
@@ -330,12 +333,12 @@ public actor RunnerOrchestrator {
             newState: anyRunning ? .running : .stopped
         )
     }
-    
+
     private func executeClean(parameters: [String: String]) async throws -> RunnerActionResult {
         let aggressive = parameters["aggressive"]?.lowercased() == "true"
         let dryRun = parameters["dry-run"]?.lowercased() == "true"
         let workspace = parameters["workspace"]
-        
+
         let executor = CleanupExecutor(
             safetyPolicy: CleanupSafetyPolicy(
                 allowedRootDirectories: CleanupSafetyPolicy.runnerDefault().allowedRootDirectories,
@@ -343,17 +346,16 @@ public actor RunnerOrchestrator {
                 dryRun: dryRun
             )
         )
-        
-        let result: CleanupResult
-        if let workspace = workspace {
-            result = try await executor.execute(
+
+        let result: CleanupResult = if let workspace {
+            try await executor.execute(
                 policy: aggressive ? .aggressive : .standard,
                 workspacePath: workspace
             )
         } else {
-            result = try await executor.scheduledDeepClean(daysOld: aggressive ? 1 : 7)
+            try await executor.scheduledDeepClean(daysOld: aggressive ? 1 : 7)
         }
-        
+
         var details: [String: String] = [:]
         if dryRun {
             details["dry_run_paths"] = result.dryRunPaths.joined(separator: ", ")
@@ -364,20 +366,21 @@ public actor RunnerOrchestrator {
             let diskUsage = try await executor.diskUsagePercent()
             details["disk_usage_after"] = "\(diskUsage)%"
         }
-        
+
         return RunnerActionResult(
             actionID: "clean",
             success: true,
-            message: dryRun ? "Dry run complete — \(result.dryRunPaths.count) items would be removed" : "Cleanup complete",
+            message: dryRun ? "Dry run complete — \(result.dryRunPaths.count) items would be removed" :
+                "Cleanup complete",
             details: details
         )
     }
-    
+
     private func executeProvisionWorker(parameters: [String: String]) async throws -> RunnerActionResult {
         let profileName = parameters["profile"] ?? "build-worker"
         let apply = parameters["apply"]?.lowercased() == "true"
         let autoConfirm = parameters["yes"]?.lowercased() == "true"
-        
+
         guard let profile = WorkerProfile.allBuiltIn.first(where: { $0.name == profileName }) else {
             return RunnerActionResult(
                 actionID: "provision-worker",
@@ -385,13 +388,13 @@ public actor RunnerOrchestrator {
                 message: "Unknown profile: \(profileName). Built-in profiles: \(WorkerProfile.allBuiltIn.map(\.name).joined(separator: ", "))"
             )
         }
-        
+
         let planner = ProvisioningPlanner()
         let plan = await planner.plan(for: profile)
-        
+
         let executor = ProvisioningExecutor()
         let result = await executor.apply(plan: plan, dryRun: !apply, autoConfirm: autoConfirm)
-        
+
         let details: [String: String] = [
             "profile": profileName,
             "dry_run": String(!apply),
@@ -399,7 +402,7 @@ public actor RunnerOrchestrator {
             "skipped_changes": String(result.skippedChanges.count),
             "errors": String(result.errors.count)
         ]
-        
+
         return RunnerActionResult(
             actionID: "provision-worker",
             success: result.errors.isEmpty,
@@ -416,7 +419,7 @@ public actor RunnerOrchestrator {
 public struct RunnerStateSnapshot: Sendable {
     public let state: RunnerState
     public let availableActions: [RunnerAction]
-    
+
     public func toJSON() -> [String: Any] {
         [
             "state": state.toJSON(),
@@ -431,19 +434,19 @@ private func shell(_ executable: String, _ args: [String]) -> (stdout: String, s
     let task = Process()
     task.executableURL = URL(fileURLWithPath: executable)
     task.arguments = args
-    
+
     let outPipe = Pipe()
     let errPipe = Pipe()
     task.standardOutput = outPipe
     task.standardError = errPipe
-    
+
     do {
         try task.run()
         task.waitUntilExit()
     } catch {
         return ("", error.localizedDescription, -1)
     }
-    
+
     let out = String(data: outPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
     let err = String(data: errPipe.fileHandleForReading.readDataToEndOfFile(), encoding: .utf8) ?? ""
     return (out, err, task.terminationStatus)

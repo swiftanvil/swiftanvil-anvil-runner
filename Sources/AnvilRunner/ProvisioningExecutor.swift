@@ -10,7 +10,7 @@ import Foundation
 public actor ProvisioningExecutor {
     private var auditLog: [AuditEntry] = []
 
-    public init() {}
+    public init() { }
 
     /// Applies a provisioning plan.
     /// - Parameters:
@@ -34,7 +34,7 @@ public actor ProvisioningExecutor {
 
         // Confirm if there are privileged changes and not in auto-confirm mode
         let hasPrivileged = plan.changes.contains { $0.isPrivileged }
-        if hasPrivileged && !autoConfirm && !dryRun {
+        if hasPrivileged, !autoConfirm, !dryRun {
             let confirmed = await promptForConfirmation(
                 message: "\nThis plan contains privileged changes. Apply them?"
             )

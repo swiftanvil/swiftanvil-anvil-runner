@@ -166,17 +166,29 @@ public enum CheckStatus: String, Codable, Sendable {
 
 // MARK: - Formatting
 
-extension CapabilityReport {
+public extension CapabilityReport {
     /// Human-readable table format for discover output.
-    public func formattedDiscovery() -> String {
+    func formattedDiscovery() -> String {
         var lines: [String] = []
         lines.append("Host: \(host.hostname) (\(host.platform) \(host.platformVersion), \(host.architecture))")
         lines.append("")
         lines.append("Tools:")
-        lines.append("  Swift:       \(capabilities.swift.installed ? "✅ \(capabilities.swift.version ?? "")" : "❌ not found")")
-        lines.append("  Xcode:       \(capabilities.xcode.installed ? "✅ \(capabilities.xcode.version ?? "")" : "❌ not found")")
-        lines.append("  Git:         \(capabilities.git.installed ? "✅ \(capabilities.git.version ?? "")" : "❌ not found")")
-        lines.append("  GitHub CLI:  \(capabilities.githubCLI.installed ? "✅ \(capabilities.githubCLI.version ?? "")" : "❌ not found")")
+        lines
+            .append(
+                "  Swift:       \(capabilities.swift.installed ? "✅ \(capabilities.swift.version ?? "")" : "❌ not found")"
+            )
+        lines
+            .append(
+                "  Xcode:       \(capabilities.xcode.installed ? "✅ \(capabilities.xcode.version ?? "")" : "❌ not found")"
+            )
+        lines
+            .append(
+                "  Git:         \(capabilities.git.installed ? "✅ \(capabilities.git.version ?? "")" : "❌ not found")"
+            )
+        lines
+            .append(
+                "  GitHub CLI:  \(capabilities.githubCLI.installed ? "✅ \(capabilities.githubCLI.version ?? "")" : "❌ not found")"
+            )
         lines.append("")
         lines.append("Agents:")
         lines.append("  Claude:  \(agents.claude.installed ? "✅" : "⚠️  not found")")
@@ -194,7 +206,7 @@ extension CapabilityReport {
     }
 
     /// Human-readable table format for doctor output.
-    public func formattedDoctor() -> String {
+    func formattedDoctor() -> String {
         var lines: [String] = []
         lines.append("Doctor Report: \(host.hostname)")
         lines.append("Generated: \(generatedAt)")

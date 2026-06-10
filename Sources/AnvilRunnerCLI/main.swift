@@ -1,5 +1,5 @@
-import Foundation
 import AnvilRunner
+import Foundation
 
 @main
 struct AnvilRunnerCLI {
@@ -75,7 +75,7 @@ struct AnvilRunnerCLI {
     private static func printAgentNativeState() async {
         let orchestrator = RunnerOrchestrator.shared
         let snapshot = await orchestrator.currentState()
-        print(await orchestrator.whatCanIDo())
+        await print(orchestrator.whatCanIDo())
         print("")
         print("Run 'anvil-runner agent <action-id>' to execute an action.")
         print("Run 'anvil-runner help' for traditional CLI commands.")
@@ -100,7 +100,7 @@ struct AnvilRunnerCLI {
                 actionID: actionID,
                 success: false,
                 message: "Action '\(actionID)' is not available from state '\(snapshot.state.description)'. " +
-                         "Available actions: \(snapshot.availableActions.map(\.id).joined(separator: ", "))"
+                    "Available actions: \(snapshot.availableActions.map(\.id).joined(separator: ", "))"
             )
             if json {
                 printJSON(result.toJSON())
@@ -125,7 +125,7 @@ struct AnvilRunnerCLI {
         }
 
         // Confirm destructive actions
-        if action.requiresConfirmation && !json {
+        if action.requiresConfirmation, !json {
             print("⚠️  Action '\(action.name)' requires confirmation.")
             print("   \(action.description)")
             print("   Type 'yes' to proceed: ", terminator: "")
@@ -348,7 +348,7 @@ struct AnvilRunnerCLI {
             )
         )
 
-        if let workspace = workspace {
+        if let workspace {
             print("Cleaning workspace: \(workspace)...")
             let result = try await executor.execute(
                 policy: aggressive ? .aggressive : .standard,
@@ -431,7 +431,7 @@ struct AnvilRunnerCLI {
         if !result.appliedChanges.isEmpty {
             print("\n✅ Applied \(result.appliedChanges.count) change(s).")
         }
-        if !result.skippedChanges.isEmpty && dryRun {
+        if !result.skippedChanges.isEmpty, dryRun {
             print("\n📝 Skipped \(result.skippedChanges.count) change(s) (dry run).")
         }
         if !result.errors.isEmpty {
@@ -502,8 +502,10 @@ struct AnvilRunnerCLI {
     }
 
     private static func printJSON(_ object: Any) {
-        guard let data = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
-              let string = String(data: data, encoding: .utf8) else {
+        guard
+            let data = try? JSONSerialization.data(withJSONObject: object, options: [.prettyPrinted, .sortedKeys]),
+            let string = String(data: data, encoding: .utf8)
+        else {
             print("{\"error\": \"failed to serialize JSON\"}")
             return
         }

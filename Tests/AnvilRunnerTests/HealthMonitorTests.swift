@@ -2,7 +2,6 @@ import Testing
 @testable import AnvilRunner
 
 struct HealthMonitorTests {
-
     @Test
     func formatReportWithRunningRunner() async {
         let monitor = HealthMonitor()

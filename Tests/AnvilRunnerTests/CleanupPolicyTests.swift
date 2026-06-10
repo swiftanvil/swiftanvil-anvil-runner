@@ -3,7 +3,6 @@ import Testing
 @testable import AnvilRunner
 
 struct CleanupPolicyTests {
-
     @Test
     func cleanupPolicyCases() {
         let cases: [CleanupPolicy] = [.minimal, .standard, .aggressive, .ephemeral]

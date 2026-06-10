@@ -2,29 +2,27 @@ import Foundation
 
 /// Monitors the health of self-hosted runner instances.
 public actor HealthMonitor {
-    public init() {}
+    public init() { }
 
     /// Checks the health of a runner and returns its status.
     public func checkRunner(name: String, installDirectory: String) async -> RunnerStatus {
         let isRunning = await isProcessRunning(name: name, installDirectory: installDirectory)
-        let diskUsage = (try? await CleanupExecutor().diskUsagePercent()) ?? 0
-        let memoryUsage = (try? await memoryUsagePercent()) ?? 0
+        let diskUsage = await (try? CleanupExecutor().diskUsagePercent()) ?? 0
+        let memoryUsage = await (try? memoryUsagePercent()) ?? 0
 
-        let status = RunnerStatus(
+        return RunnerStatus(
             name: name,
             isRunning: isRunning,
             lastJobCompletedAt: nil, // Would be populated by job hook
             diskUsagePercent: diskUsage,
             memoryUsagePercent: memoryUsage
         )
-
-        return status
     }
 
     /// Checks all runners in a fleet.
     public func checkFleet(installDirectory: String, count: Int, namePrefix: String) async -> [RunnerStatus] {
         var results: [RunnerStatus] = []
-        for i in 1...max(1, count) {
+        for i in 1 ... max(1, count) {
             let name = "\(namePrefix)-\(i)"
             let status = await checkRunner(name: name, installDirectory: installDirectory)
             results.append(status)
@@ -34,13 +32,13 @@ public actor HealthMonitor {
 
     /// Returns true if disk usage exceeds the threshold.
     public func isDiskCritical(threshold: Int = 80) async -> Bool {
-        let usage = (try? await CleanupExecutor().diskUsagePercent()) ?? 0
+        let usage = await (try? CleanupExecutor().diskUsagePercent()) ?? 0
         return usage >= threshold
     }
 
     /// Returns true if memory usage exceeds the threshold.
     public func isMemoryCritical(threshold: Int = 90) async -> Bool {
-        let usage = (try? await memoryUsagePercent()) ?? 0
+        let usage = await (try? memoryUsagePercent()) ?? 0
         return usage >= threshold
     }
 

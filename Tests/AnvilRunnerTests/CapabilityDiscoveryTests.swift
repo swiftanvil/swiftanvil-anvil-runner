@@ -4,9 +4,8 @@ import Testing
 
 @Suite("CapabilityDiscovery")
 struct CapabilityDiscoveryTests {
-
     @Test("discover produces a report with schema version 1")
-    func discoverProducesReport() async throws {
+    func discoverProducesReport() async {
         let discovery = CapabilityDiscovery()
         let report = await discovery.discover()
 
@@ -17,7 +16,7 @@ struct CapabilityDiscoveryTests {
     }
 
     @Test("doctor produces checks")
-    func doctorProducesChecks() async throws {
+    func doctorProducesChecks() async {
         let discovery = CapabilityDiscovery()
         let report = await discovery.doctor()
 
@@ -25,7 +24,7 @@ struct CapabilityDiscoveryTests {
     }
 
     @Test("doctor checks have valid statuses")
-    func doctorChecksHaveValidStatuses() async throws {
+    func doctorChecksHaveValidStatuses() async {
         let discovery = CapabilityDiscovery()
         let report = await discovery.doctor()
 
@@ -53,7 +52,7 @@ struct CapabilityDiscoveryTests {
     }
 
     @Test("formattedDiscovery produces non-empty output")
-    func formattedDiscoveryNonEmpty() async throws {
+    func formattedDiscoveryNonEmpty() async {
         let discovery = CapabilityDiscovery()
         let report = await discovery.discover()
         let output = report.formattedDiscovery()
@@ -63,7 +62,7 @@ struct CapabilityDiscoveryTests {
     }
 
     @Test("formattedDoctor produces non-empty output")
-    func formattedDoctorNonEmpty() async throws {
+    func formattedDoctorNonEmpty() async {
         let discovery = CapabilityDiscovery()
         let report = await discovery.doctor()
         let output = report.formattedDoctor()
@@ -73,7 +72,7 @@ struct CapabilityDiscoveryTests {
     }
 
     @Test("doctor exit logic: pass when no failures")
-    func doctorNoFailures() async throws {
+    func doctorNoFailures() {
         let report = CapabilityReport(
             generatedAt: "2026-06-04T00:00:00Z",
             host: HostInfo(platform: "macOS", platformVersion: "15.5", architecture: "arm64", hostname: "test"),
@@ -104,7 +103,7 @@ struct CapabilityDiscoveryTests {
     }
 
     @Test("doctor exit logic: fail when failures present")
-    func doctorWithFailures() async throws {
+    func doctorWithFailures() {
         let report = CapabilityReport(
             generatedAt: "2026-06-04T00:00:00Z",
             host: HostInfo(platform: "macOS", platformVersion: "15.5", architecture: "arm64", hostname: "test"),
